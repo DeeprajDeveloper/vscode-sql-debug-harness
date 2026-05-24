@@ -10,3 +10,4 @@ vscode-sp-debug/out/
 
 samples/*
 scripts/*
+.cursor/plans/*
