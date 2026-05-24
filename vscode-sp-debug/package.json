@@ -1,0 +1,90 @@
+{
+  "name": "sp-debug",
+  "displayName": "MS-SQL Debug Script Ttansformer",
+    "description": "Generate safe debug scripts and structural inventory reports from T-SQL stored procedures.",
+  "version": "0.2.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other", "Programming Languages"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "spDebug.generate",
+        "title": "MS-SQL Debug Scripter: Generate Transformed Debug Script",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "spDebug.inventory",
+        "title": "MS-SQL Debug Scripter: Generate Structural Keyword Report",
+        "icon": "$(list-flat)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "spDebug.generate",
+          "when": "resourceExtname == .sql",
+          "group": "7_modification@1"
+        },
+        {
+          "command": "spDebug.inventory",
+          "when": "resourceExtname == .sql",
+          "group": "7_modification@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "spDebug.generate",
+          "when": "resourceLangId == sql",
+          "group": "navigation@1"
+        },
+        {
+          "command": "spDebug.inventory",
+          "when": "resourceLangId == sql",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "spDebug.generate",
+          "when": "resourceLangId == sql",
+          "group": "navigation@1"
+        },
+        {
+          "command": "spDebug.inventory",
+          "when": "resourceLangId == sql",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "MS-SQL Debug Scripter",
+      "properties": {
+        "spDebug.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Python executable used to run sp-debug."
+        },
+        "spDebug.traceStyle": {
+          "type": "string",
+          "enum": ["raiserror", "print"],
+          "default": "print",
+          "description": "Trace line style for generated debug scripts (print or raiserror)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}

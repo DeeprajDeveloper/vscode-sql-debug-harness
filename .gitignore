@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+vscode-sp-debug/node_modules/
+vscode-sp-debug/out/
+
+samples/*
+scripts/*

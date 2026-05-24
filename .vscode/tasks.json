@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SP Debug: Generate Debug Script",
+      "type": "shell",
+      "command": "python3 -m sp_debug transform -i ${file} -o ${fileDirname}/${fileBasenameNoExtension}_debug.sql",
+      "options": {
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}/tools/sp-debug/src"
+        }
+      },
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
