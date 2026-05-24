@@ -1,13 +1,19 @@
 {
   "name": "sp-debug",
-  "displayName": "MS-SQL Debug Script Ttansformer",
-    "description": "Generate safe debug scripts and structural inventory reports from T-SQL stored procedures.",
-  "version": "0.2.0",
-  "publisher": "local",
+  "displayName": "MS-SQL Debug Script Transformer",
+  "description": "Generate safe debug scripts and structural inventory reports from T-SQL stored procedures.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DeeprajDeveloper/mssql-sp-debug-scripter/tree/main"
+  },
+  "license": "MIT",
+  "version": "1.0.0",
+  "publisher": "DeeprajAdhikary",
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Other", "Programming Languages"],
+  "icon": "images/extension-logo.png",
+  "categories": ["Other", "Programming Languages", "SQL", "SQL Debugging"],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -80,11 +86,14 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "mkdir -p dist && vsce package --out dist/sp-debug.vsix --allow-missing-repository"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "2.32.0",
     "typescript": "^5.3.0"
   }
 }

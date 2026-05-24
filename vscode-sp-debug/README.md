@@ -78,12 +78,11 @@ npm run compile
 
 Then: **Command Palette → Developer: Install Extension from Location…** → select `vscode-sp-debug`, and reload.
 
-Or package a VSIX:
+Or package a VSIX from the repo root:
 
 ```bash
-npm install -g @vscode/vsce
-vsce package
-code --install-extension sp-debug-0.2.0.vsix
+./scripts/package-vsix.sh
+code --install-extension vscode-sp-debug/dist/sp-debug.vsix
 ```
 
 ---

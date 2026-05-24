@@ -49,6 +49,15 @@ SQLDebugger/
   samples/             Example procedures and outputs
 ```
 
+## Install the extension (VSIX)
+
+```bash
+./scripts/package-vsix.sh
+code --install-extension vscode-sp-debug/dist/sp-debug.vsix
+```
+
+Re-run `./scripts/package-vsix.sh` after any extension changes.
+
 ## Documentation
 
 - **[TECHNICAL.md](TECHNICAL.md)** — architecture, CLI flags, extension setup, parser details, limitations

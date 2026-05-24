@@ -131,13 +131,30 @@ Available from Explorer right-click (`.sql`), editor context menu, and Command P
 
 Output channel: **MS-SQL SP Debug**.
 
-### Install locally
+### Package as VSIX
+
+From repo root:
 
 ```bash
-vsce package && code --install-extension sp-debug-0.2.0.vsix
+./scripts/package-vsix.sh
 ```
 
-Or **Developer: Install Extension from Location…** → `vscode-sp-debug/`.
+Or from `vscode-sp-debug/`:
+
+```bash
+npm install && npm run package
+```
+
+Output: `vscode-sp-debug/dist/sp-debug.vsix`
+
+```bash
+code --install-extension vscode-sp-debug/dist/sp-debug.vsix
+cursor --install-extension vscode-sp-debug/dist/sp-debug.vsix
+```
+
+Uses `@vscode/vsce@2.32.0` (pinned; v3 has a packaging regression with secret scanning).
+
+Alternative: **Developer: Install Extension from Location…** → `vscode-sp-debug/`.
 
 ---
 
