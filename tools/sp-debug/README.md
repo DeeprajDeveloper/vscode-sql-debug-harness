@@ -1,12 +1,14 @@
-# sp-debug — MSSQL stored procedure debug harness
+# sp-debug — Python CLI
 
-Transforms a stored procedure (or T-SQL script) into a **safe debug script** you can run in SSMS or the VS Code MSSQL extension:
+Part of [MS-SQL SP Debug Script Generator](../../README.md). Technical details: [TECHNICAL.md](../../TECHNICAL.md).
 
-- **DML stubbed** — `INSERT` / `UPDATE` / `DELETE` / `MERGE` against real tables are wrapped in block comments and replaced with `RAISERROR ... WITH NOWAIT` skip messages.
-- **Variable traces** — after each `SET @var = ...` and `SELECT @var = ...`, injects a trace line (`RAISERROR` or `PRINT`).
-- **Table variables preserved** — `INSERT INTO @t`, `UPDATE @t` are left unchanged.
+Transforms a stored procedure into a **safe debug script**:
 
-Output files include a **DO NOT RUN ON PRODUCTION** banner and a summary of changes.
+- **DML previews** — real-table `INSERT` / `UPDATE` / `DELETE` become `SELECT` previews with `[DBG_Action]` and column values
+- **Variable traces** — `PRINT` (or `RAISERROR`) after each `SET @var` / `SELECT @var =`
+- **Table variables preserved** — `INSERT INTO @t`, `UPDATE @t` unchanged
+
+Output includes a **DO NOT RUN ON PRODUCTION** banner.
 
 ## Install
 

@@ -1,6 +1,8 @@
-# MS-SQL SP Debug Script Generator
+# MS-SQL SP Debug Script Generator (extension)
 
-VS Code / Cursor extension that wraps the Python [**sp-debug**](../tools/sp-debug/) CLI to analyze and transform T-SQL stored procedures into **safe, runnable debug scripts**.
+VS Code / Cursor extension for the [project](../README.md). Technical details: [TECHNICAL.md](../TECHNICAL.md).
+
+Wraps the Python [**sp-debug**](../tools/sp-debug/) CLI to analyze and transform T-SQL stored procedures into **safe, runnable debug scripts**.
 
 ## Features
 
