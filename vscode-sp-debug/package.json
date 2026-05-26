@@ -7,7 +7,7 @@
     "url": "https://github.com/DeeprajDeveloper/mssql-sp-debug-scripter/tree/main"
   },
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "DeeprajAdhikary",
   "engines": {
     "vscode": "^1.85.0"
@@ -27,6 +27,11 @@
         "command": "spDebug.inventory",
         "title": "MS-SQL Debug Scripter: Generate Structural Keyword Report",
         "icon": "$(list-flat)"
+      },
+      {
+        "command": "spDebug.verifySetup",
+        "title": "MS-SQL Debug Scripter: Verify Python Setup",
+        "icon": "$(check-all)"
       }
     ],
     "menus": {
@@ -72,8 +77,18 @@
       "properties": {
         "spDebug.pythonPath": {
           "type": "string",
-          "default": "python3",
-          "description": "Python executable used to run sp-debug."
+          "default": "",
+          "description": "Python executable for sp-debug. Leave empty to try python3, python, and py (Windows)."
+        },
+        "spDebug.pipPackage": {
+          "type": "string",
+          "default": "mssql-sp-debug",
+          "description": "PyPI package name shown in install hints (pip install <name>)."
+        },
+        "spDebug.preferWorkspaceDev": {
+          "type": "boolean",
+          "default": true,
+          "description": "If this workspace contains tools/sp-debug, use that source when pip install is missing."
         },
         "spDebug.traceStyle": {
           "type": "string",

@@ -8,6 +8,7 @@ from typing import Optional
 
 import typer
 
+from sp_debug import __version__
 from sp_debug.console import supports_color
 from sp_debug.inventory import inventory_from_sql
 from sp_debug.transform import transform_sql
@@ -37,6 +38,12 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+
+
+@app.command("version")
+def cmd_version() -> None:
+    """Print package version."""
+    typer.echo(__version__)
 
 
 def _version() -> str:

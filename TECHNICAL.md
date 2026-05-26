@@ -111,7 +111,7 @@ npm install && npm run compile
 
 F5 from repo root (`.vscode/launch.json` → Extension Development Host).
 
-**Requires:** workspace root contains `tools/sp-debug/`.
+**Backend:** `python -m sp_debug` from PyPI (`pip install mssql-sp-debug`) or, in this monorepo, `tools/sp-debug/src` via `PYTHONPATH` when `spDebug.preferWorkspaceDev` is true.
 
 ### Commands
 
@@ -119,6 +119,7 @@ F5 from repo root (`.vscode/launch.json` → Extension Development Host).
 |---------|--------|
 | `spDebug.generate` | Run transform, open debug SQL tab |
 | `spDebug.inventory` | Run inventory, open report beside source |
+| `spDebug.verifySetup` | Probe Python + sp_debug, show install hints |
 
 Available from Explorer right-click (`.sql`), editor context menu, and Command Palette.
 
@@ -126,7 +127,9 @@ Available from Explorer right-click (`.sql`), editor context menu, and Command P
 
 | Key | Default |
 |-----|---------|
-| `spDebug.pythonPath` | `python3` |
+| `spDebug.pythonPath` | *(empty — auto-detect)* |
+| `spDebug.pipPackage` | `mssql-sp-debug` |
+| `spDebug.preferWorkspaceDev` | `true` |
 | `spDebug.traceStyle` | `print` |
 
 Output channel: **MS-SQL SP Debug**.
@@ -155,6 +158,10 @@ cursor --install-extension vscode-sp-debug/dist/sp-debug.vsix
 Uses `@vscode/vsce@2.32.0` (pinned; v3 has a packaging regression with secret scanning).
 
 Alternative: **Developer: Install Extension from Location…** → `vscode-sp-debug/`.
+
+**Marketplace:** see [vscode-sp-debug/MARKETPLACE.md](vscode-sp-debug/MARKETPLACE.md).
+
+**PyPI:** package name `mssql-sp-debug` — `./scripts/publish-pypi.sh`.
 
 ---
 

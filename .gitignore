@@ -12,3 +12,4 @@ vscode-sp-debug/dist/
 samples/*
 scripts/*
 .cursor/plans/*
+*.DS_Store

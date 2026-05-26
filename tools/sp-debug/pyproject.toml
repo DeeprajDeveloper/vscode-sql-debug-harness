@@ -3,18 +3,39 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sp-debug"
-version = "0.1.0"
-description = "Transform MSSQL stored procedures into safe debug harness scripts"
+name = "mssql-sp-debug"
+version = "1.1.0"
+description = "Transform MSSQL stored procedures into safe debug harness scripts (inventory + DML previews)"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.10"
+authors = [{ name = "Deepraj Adhikary" }]
+keywords = ["mssql", "sql-server", "t-sql", "stored-procedure", "debug"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Database",
+  "Topic :: Software Development :: Code Generators",
+]
 dependencies = [
   "sqlglot>=25.0.0",
   "typer>=0.12.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/DeeprajDeveloper/mssql-sp-debug-scripter"
+Repository = "https://github.com/DeeprajDeveloper/mssql-sp-debug-scripter"
+Issues = "https://github.com/DeeprajDeveloper/mssql-sp-debug-scripter/issues"
+
 [project.optional-dependencies]
-dev = ["pytest>=8.0.0"]
+dev = ["pytest>=8.0.0", "build>=1.0.0", "twine>=5.0.0"]
 
 [project.scripts]
 sp-debug = "sp_debug.cli:app"

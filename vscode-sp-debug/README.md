@@ -1,89 +1,54 @@
-# MS-SQL SP Debug Script Generator (extension)
+# MS-SQL Debug Script Transformer
 
-VS Code / Cursor extension for the [project](../README.md). Technical details: [TECHNICAL.md](../TECHNICAL.md).
+Generate **safe debug harness scripts** and **structural inventory reports** from T-SQL stored procedures — without writing to real tables.
 
-Wraps the Python [**sp-debug**](../tools/sp-debug/) CLI to analyze and transform T-SQL stored procedures into **safe, runnable debug scripts**.
+> **Not a live debugger.** This extension does not attach breakpoints or step through procedures on SQL Server. It generates a static script you run in SSMS or the MSSQL extension on a **dev** database.
 
 ## Features
 
-### Generate Debug Script
+### Generate Transformed Debug Script
 
-Turns a stored procedure into a debug harness you can run in SSMS or the MSSQL extension:
+- **DML previews** — `INSERT` / `UPDATE` / `DELETE` on real tables become `SELECT` previews with `[DBG_Action]` and projected values
+- **Variable traces** — `PRINT` after `SET @var` / `SELECT @var =` to follow execution in Messages
+- **Safety banner** — `DEBUG HARNESS — DO NOT RUN ON PRODUCTION`
+- **Table variables preserved** — `@table` DML is left unchanged
 
-- **DML previews** — `INSERT` / `UPDATE` / `DELETE` against real tables become `SELECT` previews with a `[DBG_Action]` column plus the values that would be written
-- **Variable traces** — `PRINT` lines after each `SET @var` (and `SELECT @var =`) so you can follow execution in the Messages tab
-- **Safety banner** — output includes `DEBUG HARNESS — DO NOT RUN ON PRODUCTION`
-- **Table variables preserved** — `INSERT INTO @t` / `UPDATE @t` are left unchanged
+### Structural Keyword Report (inventory)
 
-### Run Inventory Report
+Summary counts, warnings, and line-level detail for DML, TRY/CATCH, loops, SET statements, and more.
 
-Structural analysis of a `.sql` file before you transform it:
-
-- **Summary table** — counts for DML, TRY/CATCH, IF/WHILE, SET, Command fragments, etc.
-- **Warnings & errors** — parser and scan warnings in one place
-- **Identified section** — lists each detected statement with line numbers and detail
-
-### Where to run commands
+### Where to run
 
 | Location | Actions |
 |----------|---------|
-| **Explorer** — right-click a `.sql` file | Generate Debug Script · Run Inventory Report |
-| **Editor** — right-click in a `.sql` tab | Same commands |
-| **Command Palette** (`Cmd+Shift+P`) | Search `MS-SQL SP Debug` |
+| Explorer — right-click `.sql` | Generate · Inventory |
+| Editor — right-click in SQL tab | Same |
+| Command Palette | `MS-SQL Debug Scripter` |
 
-If text is **selected** in the editor, only the selection is used. From the Explorer, the **full file** is always used.
+Selected text in the editor is used when non-empty; Explorer always uses the full file.
 
 ---
 
 ## Prerequisites
 
-1. **Python 3.10+** with `sp-debug` installed:
+1. **Python 3.10+**
+2. Install the backend package (PyPI name: **mssql-sp-debug**):
 
    ```bash
-   cd tools/sp-debug
-   pip install -e .
+   pip install mssql-sp-debug
    ```
 
-2. Open the **SQLDebugger** workspace root (the folder that contains `tools/sp-debug`).
-
-3. Verify the CLI:
+3. Verify:
 
    ```bash
-   python3 -m sp_debug transform -i tools/sp-debug/samples/my_proc.sql --quiet
-   python3 -m sp_debug inventory -i tools/sp-debug/samples/my_proc.sql
+   python3 -m sp_debug version
    ```
 
----
+4. In VS Code / Cursor: run **MS-SQL Debug Scripter: Verify Python Setup** (Command Palette).
 
-## Install & run locally
+### Monorepo developers
 
-### Development (F5)
-
-```bash
-cd vscode-sp-debug
-npm install
-npm run compile
-```
-
-1. Open the **SQLDebugger** repo root in Cursor/VS Code
-2. Run **SP Debug: Run VSCode Extension** from the Run and Debug panel (or F5)
-3. In the Extension Development Host window, open a `.sql` file and use the commands above
-
-### Install into your editor
-
-```bash
-cd vscode-sp-debug
-npm run compile
-```
-
-Then: **Command Palette → Developer: Install Extension from Location…** → select `vscode-sp-debug`, and reload.
-
-Or package a VSIX from the repo root:
-
-```bash
-./scripts/package-vsix.sh
-code --install-extension vscode-sp-debug/dist/sp-debug.vsix
-```
+If you open the [SQLDebugger](https://github.com/DeeprajDeveloper/mssql-sp-debug-scripter) repo, the extension can use `tools/sp-debug` from the workspace when pip install is missing (`spDebug.preferWorkspaceDev`, default on).
 
 ---
 
@@ -91,37 +56,66 @@ code --install-extension vscode-sp-debug/dist/sp-debug.vsix
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `spDebug.pythonPath` | `python3` | Python executable with `sp-debug` installed |
-| `spDebug.traceStyle` | `print` | `print` (Messages tab) or `raiserror` (WITH NOWAIT) |
+| `spDebug.pythonPath` | *(empty)* | Python executable. Empty = try `python3`, `python`, `py`. |
+| `spDebug.pipPackage` | `mssql-sp-debug` | Package name in install hints |
+| `spDebug.preferWorkspaceDev` | `true` | Use `tools/sp-debug` in workspace when present |
+| `spDebug.traceStyle` | `print` | `print` or `raiserror` for trace lines |
 
-Example:
+Example `settings.json`:
 
 ```json
 {
-  "spDebug.pythonPath": "/usr/local/bin/python3",
+  "spDebug.pythonPath": "C:\\Python312\\python.exe",
   "spDebug.traceStyle": "print"
 }
 ```
 
 ---
 
-## Output
+## Install the extension
 
-- **Debug script** — opens in a new SQL editor tab (save as `*_debug.sql`)
-- **Inventory** — opens beside your source file; full log also in **MS-SQL SP Debug** output channel (**View → Output**)
+### From VSIX (local)
+
+```bash
+git clone https://github.com/DeeprajDeveloper/mssql-sp-debug-scripter.git
+cd mssql-sp-debug-scripter
+./scripts/package-vsix.sh
+code --install-extension vscode-sp-debug/dist/sp-debug.vsix
+```
+
+### From Marketplace
+
+*(after publish)* search **MS-SQL Debug Script Transformer** in Extensions.
 
 ---
 
 ## Limitations
 
-See [tools/sp-debug/README.md](../tools/sp-debug/README.md) for MVP exclusions (dynamic SQL, MERGE edge cases, encrypted procs, etc.). Always review generated scripts before running against a shared cluster.
+Review generated scripts before running on any shared server.
+
+| Pattern | Behavior |
+|---------|----------|
+| Dynamic SQL (`EXEC(@sql)`, `sp_executesql`) | Not analyzed |
+| `MERGE` | Partial / line-scan only |
+| `INSERT ... EXEC` | Not handled |
+| DDL inside proc | Not stubbed |
+| Encrypted procedures | No source |
+| Cursors | Not rewritten |
+
+Full technical notes: [project TECHNICAL.md](https://github.com/DeeprajDeveloper/mssql-sp-debug-scripter/blob/main/TECHNICAL.md)
 
 ---
 
-## Project layout
+## CLI (same backend)
 
+```bash
+pip install mssql-sp-debug
+sp-debug transform -i MyProc.sql -o MyProc_debug.sql
+sp-debug inventory -i MyProc.sql
 ```
-SQLDebugger/
-  tools/sp-debug/       # Python CLI (transform + inventory)
-  vscode-sp-debug/      # This extension
-```
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).

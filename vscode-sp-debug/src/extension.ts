@@ -1,61 +1,31 @@
-import * as child_process from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
+import {
+  formatBackendLabel,
+  getSpDebugSettings,
+  isSetupFailure,
+  promptSetupFailure,
+  resolveSpDebugBackend,
+  runSpDebugCli,
+  SpDebugBackend,
+} from "./spDebugBackend";
 
 const OUTPUT_CHANNEL = "MS-SQL SP Debug";
 
-function workspaceRoot(): string {
-  const folders = vscode.workspace.workspaceFolders;
-  if (!folders?.length) {
-    return "";
+function getOutputChannel(): vscode.OutputChannel {
+  return vscode.window.createOutputChannel(OUTPUT_CHANNEL);
+}
+
+async function requireBackend(): Promise<SpDebugBackend | null> {
+  const resolved = await resolveSpDebugBackend();
+  if (isSetupFailure(resolved)) {
+    getOutputChannel().appendLine(resolved.message);
+    await promptSetupFailure(resolved);
+    return null;
   }
-  return folders[0].uri.fsPath;
-}
-
-function spDebugModulePath(root: string): string {
-  return path.join(root, "tools", "sp-debug");
-}
-
-function getConfig(): { pythonPath: string; traceStyle: string } {
-  const config = vscode.workspace.getConfiguration("spDebug");
-  return {
-    pythonPath: config.get<string>("pythonPath", "python3"),
-    traceStyle: config.get<string>("traceStyle", "print"),
-  };
-}
-
-function ensureSpDebugAvailable(): string | null {
-  const root = workspaceRoot();
-  if (!root || !fs.existsSync(spDebugModulePath(root))) {
-    return "MS-SQL SP Debug: tools/sp-debug not found in workspace root.";
-  }
-  return null;
-}
-
-function runSpDebugCli(
-  pythonPath: string,
-  args: string[]
-): Promise<{ stdout: string; stderr: string; code: number }> {
-  return new Promise((resolve) => {
-    const root = workspaceRoot();
-    const env = { ...process.env };
-    if (root) {
-      const src = path.join(spDebugModulePath(root), "src");
-      env.PYTHONPATH = src + (env.PYTHONPATH ? path.delimiter + env.PYTHONPATH : "");
-    }
-    const proc = child_process.spawn(
-      pythonPath,
-      ["-m", "sp_debug", ...args],
-      { env, cwd: root || undefined }
-    );
-    let stdout = "";
-    let stderr = "";
-    proc.stdout.on("data", (d) => (stdout += d.toString()));
-    proc.stderr.on("data", (d) => (stderr += d.toString()));
-    proc.on("close", (code) => resolve({ stdout, stderr, code: code ?? 1 }));
-  });
+  return resolved;
 }
 
 async function resolveSqlSource(
@@ -93,9 +63,8 @@ async function resolveSqlSource(
 }
 
 async function generateDebugScript(uri?: vscode.Uri): Promise<void> {
-  const setupError = ensureSpDebugAvailable();
-  if (setupError) {
-    vscode.window.showErrorMessage(setupError);
+  const backend = await requireBackend();
+  if (!backend) {
     return;
   }
 
@@ -104,26 +73,31 @@ async function generateDebugScript(uri?: vscode.Uri): Promise<void> {
     return;
   }
 
-  const { pythonPath, traceStyle } = getConfig();
+  const { traceStyle } = getSpDebugSettings();
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-debug-"));
   const inputPath = path.join(tmpDir, "input.sql");
   const outputPath = path.join(tmpDir, "output_debug.sql");
 
   fs.writeFileSync(inputPath, resolved.source, "utf-8");
 
-  const channel = vscode.window.createOutputChannel(OUTPUT_CHANNEL);
+  const channel = getOutputChannel();
   channel.show(true);
-  channel.appendLine(`[${resolved.label}] Running: ${pythonPath} -m sp_debug transform ...`);
+  channel.appendLine(`[${resolved.label}] Backend: ${formatBackendLabel(backend)}`);
+  channel.appendLine(`Running: ${backend.pythonPath} -m sp_debug transform ...`);
 
-  const { stdout, stderr, code } = await runSpDebugCli(pythonPath, [
-    "transform",
-    "-i",
-    inputPath,
-    "-o",
-    outputPath,
-    "--trace-style",
-    traceStyle,
-  ]);
+  const { stdout, stderr, code } = await runSpDebugCli(
+    backend,
+    [
+      "transform",
+      "-i",
+      inputPath,
+      "-o",
+      outputPath,
+      "--trace-style",
+      traceStyle,
+    ],
+    tmpDir
+  );
 
   if (stdout) {
     channel.appendLine(stdout.trim());
@@ -164,9 +138,8 @@ async function generateDebugScript(uri?: vscode.Uri): Promise<void> {
 }
 
 async function runInventory(uri?: vscode.Uri): Promise<void> {
-  const setupError = ensureSpDebugAvailable();
-  if (setupError) {
-    vscode.window.showErrorMessage(setupError);
+  const backend = await requireBackend();
+  if (!backend) {
     return;
   }
 
@@ -175,21 +148,21 @@ async function runInventory(uri?: vscode.Uri): Promise<void> {
     return;
   }
 
-  const { pythonPath } = getConfig();
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-debug-"));
   const inputPath = path.join(tmpDir, "input.sql");
 
   fs.writeFileSync(inputPath, resolved.source, "utf-8");
 
-  const channel = vscode.window.createOutputChannel(OUTPUT_CHANNEL);
+  const channel = getOutputChannel();
   channel.show(true);
-  channel.appendLine(`[${resolved.label}] Running: ${pythonPath} -m sp_debug inventory ...`);
+  channel.appendLine(`[${resolved.label}] Backend: ${formatBackendLabel(backend)}`);
+  channel.appendLine(`Running: ${backend.pythonPath} -m sp_debug inventory ...`);
 
-  const { stdout, stderr, code } = await runSpDebugCli(pythonPath, [
-    "inventory",
-    "-i",
-    inputPath,
-  ]);
+  const { stdout, stderr, code } = await runSpDebugCli(
+    backend,
+    ["inventory", "-i", inputPath],
+    tmpDir
+  );
 
   if (stderr) {
     channel.appendLine(stderr.trim());
@@ -212,10 +185,56 @@ async function runInventory(uri?: vscode.Uri): Promise<void> {
     content: report + "\n",
     language: "plaintext",
   });
-  await vscode.window.showTextDocument(reportDoc, { preview: false, viewColumn: vscode.ViewColumn.Beside });
+  await vscode.window.showTextDocument(reportDoc, {
+    preview: false,
+    viewColumn: vscode.ViewColumn.Beside,
+  });
 
   vscode.window.showInformationMessage(
     `MS-SQL SP Debug: inventory report generated for ${resolved.label}.`
+  );
+}
+
+async function verifySetup(): Promise<void> {
+  const channel = getOutputChannel();
+  channel.show(true);
+  channel.clear();
+  channel.appendLine("MS-SQL Debug Scripter — setup verification");
+  channel.appendLine("");
+
+  const settings = getSpDebugSettings();
+  channel.appendLine(`spDebug.pythonPath: ${settings.pythonPath || "(auto)"}`);
+  channel.appendLine(`spDebug.preferWorkspaceDev: ${settings.preferWorkspaceDev}`);
+  channel.appendLine(`spDebug.pipPackage: ${settings.pipPackage}`);
+  channel.appendLine(`spDebug.traceStyle: ${settings.traceStyle}`);
+  channel.appendLine("");
+
+  const resolved = await resolveSpDebugBackend();
+  if (isSetupFailure(resolved)) {
+    channel.appendLine("Status: NOT READY");
+    channel.appendLine("");
+    channel.appendLine(resolved.message);
+    channel.appendLine("");
+    channel.appendLine("Tried Python: " + resolved.pythonCandidates.join(", "));
+    vscode.window.showErrorMessage(
+      "MS-SQL Debug Scripter: setup incomplete. See output channel.",
+      "Copy pip install"
+    ).then((choice) => {
+      if (choice === "Copy pip install") {
+        const cmd = `${resolved.pythonCandidates[0] ?? "python3"} -m pip install ${resolved.pipPackage}`;
+        void vscode.env.clipboard.writeText(cmd);
+      }
+    });
+    return;
+  }
+
+  channel.appendLine("Status: OK");
+  channel.appendLine(`Backend: ${formatBackendLabel(resolved)}`);
+  channel.appendLine("");
+  channel.appendLine("You can generate debug scripts from any .sql file in your workspace.");
+
+  vscode.window.showInformationMessage(
+    `MS-SQL Debug Scripter ready (${formatBackendLabel(resolved)}).`
   );
 }
 
@@ -226,7 +245,8 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand("spDebug.inventory", (uri?: vscode.Uri) =>
       runInventory(uri)
-    )
+    ),
+    vscode.commands.registerCommand("spDebug.verifySetup", () => verifySetup())
   );
 }
 

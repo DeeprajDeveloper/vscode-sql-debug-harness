@@ -22,8 +22,9 @@ You run the generated script on a **dev** database, watch variable values in **M
 **1. Install the Python tool**
 
 ```bash
-cd tools/sp-debug
-pip install -e ".[dev]"
+pip install mssql-sp-debug
+# or from this repo:
+cd tools/sp-debug && pip install -e ".[dev]"
 ```
 
 **2. Generate a debug script**
@@ -38,7 +39,7 @@ python3 -m sp_debug transform -i tools/sp-debug/samples/my_proc.sql -o my_proc_d
 cd vscode-sp-debug && npm install && npm run compile
 ```
 
-Open this repo in the editor, press **F5** to launch the extension, then **right-click any `.sql` file** → **MS-SQL SP Debug: Generate Debug Script**.
+Install `mssql-sp-debug` (see above), open any folder with `.sql` files, install the extension (VSIX or Marketplace), then **Verify Python Setup** and **Generate Transformed Debug Script** from the Command Palette or right-click on `.sql`.
 
 ## Project structure
 

@@ -12,6 +12,15 @@ Output includes a **DO NOT RUN ON PRODUCTION** banner.
 
 ## Install
 
+**PyPI** (for extension and standalone use):
+
+```bash
+pip install mssql-sp-debug
+python -m sp_debug version
+```
+
+**From this repo** (development):
+
 ```bash
 cd tools/sp-debug
 pip install -e ".[dev]"
