@@ -1,70 +1,71 @@
-# MS-SQL SP Debug Script Generator
+# SQL SP Harness — VS Code Extension
 
-Debug Microsoft SQL Server stored procedures **without changing data** on real tables.
+Run [sql-sp-harness](https://github.com/DeeprajDeveloper/sql-sp-harness) from VS Code to **analyze** T-SQL stored procedures and **generate** safe debug scripts you can execute on a dev database without writing to real tables.
 
-This project turns a T-SQL stored procedure into a **safe debug script** you can run in SSMS or the VS Code MSSQL extension. It also provides an **inventory report** that summarizes what’s inside a procedure before you transform it.
+> **Not a live debugger.** This extension generates a static harness script — no breakpoints or step-into debugging on SQL Server.
 
-## The problem
+## Prerequisites
 
-Step debugging inside live stored procedures on enterprise SQL Server is often unavailable (no SSDT attach, no VS breakpoints on the cluster). The usual workaround is manual: comment out `INSERT`/`UPDATE`/`DELETE`, add `PRINT` for variables, run the proc, read Messages and result sets. That’s slow and easy to get wrong.
+1. **Python 3.10+**
+2. Install the backend from PyPI:
 
-## What this does
+   ```bash
+   pip install sql-sp-harness
+   ```
 
-| Feature | What you get |
-|---------|----------------|
-| **Generate debug script** | A copy of your proc with DML replaced by `SELECT` previews and `PRINT` traces after variable assignments |
-| **Inventory report** | A summary of DML, TRY/CATCH, loops, SET statements, and more — with line-level detail |
+3. Verify:
 
-You run the generated script on a **dev** database, watch variable values in **Messages**, and inspect **would-be** DML changes in **Results** — without writing to production tables.
+   ```bash
+   python3 -m sql_sp_harness version
+   ```
 
-## Quick start
-
-**1. Install the Python tool**
-
-```bash
-pip install mssql-sp-debug
-# or from this repo:
-cd tools/sp-debug && pip install -e ".[dev]"
-```
-
-**2. Generate a debug script**
+## Local development
 
 ```bash
-python3 -m sp_debug transform -i tools/sp-debug/samples/my_proc.sql -o my_proc_debug.sql
+git clone https://github.com/DeeprajDeveloper/vscode-sql-sp-harness.git
+cd vscode-sql-sp-harness
+pip install sql-sp-harness
+npm install
+npm run compile
 ```
 
-**3. Or use the VS Code / Cursor extension**
+Press **F5** in VS Code / Cursor to launch an **Extension Development Host**.
+
+In the new window:
+
+1. Open any folder with a `.sql` file
+2. Run **SQL SP Harness: Verify Python Setup** from the Command Palette
+3. Right-click a `.sql` file → **Generate Debug Script** or **Analyze Procedure**
+
+### Commands
+
+| Command | Action |
+|---------|--------|
+| **Generate Debug Script** | DML → SELECT previews, PRINT traces on variables |
+| **Analyze Procedure** | Tabbed analysis panel (Summary, Warnings, Identified) beside the editor |
+| **Verify Python Setup** | Check Python + `sql-sp-harness` availability |
+
+Available from Explorer right-click (`.sql`), editor context menu, and Command Palette. Selected text in the editor is used when non-empty.
+
+## Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `spDebug.pythonPath` | *(empty)* | Python executable. Empty = try `python3`, `python`, `py`. |
+| `spDebug.pipPackage` | `sql-sp-harness` | Package name in install hints |
+| `spDebug.traceStyle` | `print` | `print` or `raiserror` for trace lines |
+
+## Package a VSIX (optional)
 
 ```bash
-cd vscode-sp-debug && npm install && npm run compile
+npm run package
+code --install-extension dist/sql-sp-harness.vsix
 ```
 
-Install `mssql-sp-debug` (see above), open any folder with `.sql` files, install the extension (VSIX or Marketplace), then **Verify Python Setup** and **Generate Transformed Debug Script** from the Command Palette or right-click on `.sql`.
+## Backend documentation
 
-## Project structure
+CLI flags, limitations, and encoding notes: [sql-sp-harness docs](https://deeprajdeveloper.github.io/sql-sp-harness/)
 
-```
-SQLDebugger/
-  tools/sp-debug/      Python CLI (transform + inventory)
-  vscode-sp-debug/     Editor extension
-  samples/             Example procedures and outputs
-```
+## License
 
-## Install the extension (VSIX)
-
-```bash
-./scripts/package-vsix.sh
-code --install-extension vscode-sp-debug/dist/sp-debug.vsix
-```
-
-Re-run `./scripts/package-vsix.sh` after any extension changes.
-
-## Documentation
-
-- **[TECHNICAL.md](TECHNICAL.md)** — architecture, CLI flags, extension setup, parser details, limitations
-- [tools/sp-debug/README.md](tools/sp-debug/README.md) — CLI reference
-- [vscode-sp-debug/README.md](vscode-sp-debug/README.md) — extension install and usage
-
-## Important
-
-Generated scripts include a **DO NOT RUN ON PRODUCTION** banner. Always review output before running on a shared server. This tool does **not** provide live breakpoints or step-into debugging — it generates a static harness script.
+MIT — see [LICENSE](LICENSE).

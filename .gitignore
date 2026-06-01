@@ -1,3 +1,7 @@
+node_modules/
+out/
+dist/
+
 __pycache__/
 *.py[cod]
 .venv/
@@ -5,11 +9,5 @@ venv/
 *.egg-info/
 .pytest_cache/
 
-vscode-sp-debug/node_modules/
-vscode-sp-debug/out/
-vscode-sp-debug/dist/
-
-samples/*
-scripts/*
-.cursor/plans/*
 *.DS_Store
+.cursor/plans/*

@@ -11,11 +11,18 @@ import {
   runSpDebugCli,
   SpDebugBackend,
 } from "./spDebugBackend";
+import { showAnalyzeReportPanel } from "./analyzeReportPanel";
+import { SqlSourceContext } from "./sqlSource";
 
-const OUTPUT_CHANNEL = "MS-SQL SP Debug";
+const OUTPUT_CHANNEL = "SQL SP Harness";
+
+let outputChannel: vscode.OutputChannel | undefined;
 
 function getOutputChannel(): vscode.OutputChannel {
-  return vscode.window.createOutputChannel(OUTPUT_CHANNEL);
+  if (!outputChannel) {
+    outputChannel = vscode.window.createOutputChannel(OUTPUT_CHANNEL);
+  }
+  return outputChannel;
 }
 
 async function requireBackend(): Promise<SpDebugBackend | null> {
@@ -30,24 +37,29 @@ async function requireBackend(): Promise<SpDebugBackend | null> {
 
 async function resolveSqlSource(
   uri?: vscode.Uri
-): Promise<{ source: string; baseName: string; label: string } | null> {
+): Promise<{ source: string; baseName: string; label: string; sourceUri?: vscode.Uri } | null> {
   if (uri) {
     const doc = await vscode.workspace.openTextDocument(uri);
     if (path.extname(uri.fsPath).toLowerCase() !== ".sql") {
-      vscode.window.showWarningMessage("MS-SQL SP Debug: file is not a .sql file.");
+      vscode.window.showWarningMessage("SQL SP Harness: file is not a .sql file.");
       return null;
     }
     const baseName = path.basename(uri.fsPath, path.extname(uri.fsPath));
-    return { source: doc.getText(), baseName, label: path.basename(uri.fsPath) };
+    return {
+      source: doc.getText(),
+      baseName,
+      label: path.basename(uri.fsPath),
+      sourceUri: uri,
+    };
   }
 
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    vscode.window.showWarningMessage("MS-SQL SP Debug: open a .sql file first.");
+    vscode.window.showWarningMessage("SQL SP Harness: open a .sql file first.");
     return null;
   }
   if (editor.document.languageId !== "sql") {
-    vscode.window.showWarningMessage("MS-SQL SP Debug: active file is not SQL.");
+    vscode.window.showWarningMessage("SQL SP Harness: active file is not SQL.");
     return null;
   }
 
@@ -59,22 +71,26 @@ async function resolveSqlSource(
     ? path.basename(filePath, path.extname(filePath))
     : "script";
   const label = filePath ? path.basename(filePath) : "untitled.sql";
-  return { source, baseName, label };
+  const sourceUri = filePath ? doc.uri : undefined;
+  return { source, baseName, label, sourceUri };
 }
 
-async function generateDebugScript(uri?: vscode.Uri): Promise<void> {
+async function generateDebugScript(
+  uri?: vscode.Uri,
+  sqlSource?: SqlSourceContext
+): Promise<void> {
   const backend = await requireBackend();
   if (!backend) {
     return;
   }
 
-  const resolved = await resolveSqlSource(uri);
+  const resolved = sqlSource ?? (await resolveSqlSource(uri));
   if (!resolved) {
     return;
   }
 
   const { traceStyle } = getSpDebugSettings();
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-debug-"));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sql-sp-harness-"));
   const inputPath = path.join(tmpDir, "input.sql");
   const outputPath = path.join(tmpDir, "output_debug.sql");
 
@@ -83,12 +99,12 @@ async function generateDebugScript(uri?: vscode.Uri): Promise<void> {
   const channel = getOutputChannel();
   channel.show(true);
   channel.appendLine(`[${resolved.label}] Backend: ${formatBackendLabel(backend)}`);
-  channel.appendLine(`Running: ${backend.pythonPath} -m sp_debug transform ...`);
+  channel.appendLine(`Running: ${backend.pythonPath} -m sql_sp_harness generate ...`);
 
   const { stdout, stderr, code } = await runSpDebugCli(
     backend,
     [
-      "transform",
+      "generate",
       "-i",
       inputPath,
       "-o",
@@ -108,13 +124,13 @@ async function generateDebugScript(uri?: vscode.Uri): Promise<void> {
 
   if (code !== 0 && code !== 2) {
     vscode.window.showErrorMessage(
-      `MS-SQL SP Debug failed (exit ${code}). See ${OUTPUT_CHANNEL} output.`
+      `SQL SP Harness failed (exit ${code}). See ${OUTPUT_CHANNEL} output.`
     );
     return;
   }
 
   if (!fs.existsSync(outputPath)) {
-    vscode.window.showErrorMessage("MS-SQL SP Debug: no output file produced.");
+    vscode.window.showErrorMessage("SQL SP Harness: no output file produced.");
     return;
   }
 
@@ -128,16 +144,19 @@ async function generateDebugScript(uri?: vscode.Uri): Promise<void> {
 
   if (code === 2) {
     vscode.window.showWarningMessage(
-      "MS-SQL SP Debug: completed with warnings — review banner in output."
+      "SQL SP Harness: completed with warnings — review banner in output."
     );
   } else {
     vscode.window.showInformationMessage(
-      `MS-SQL SP Debug: debug script generated for ${resolved.label}.`
+      `SQL SP Harness: debug script generated for ${resolved.label}.`
     );
   }
 }
 
-async function runInventory(uri?: vscode.Uri): Promise<void> {
+async function runAnalyze(
+  context: vscode.ExtensionContext,
+  uri?: vscode.Uri
+): Promise<void> {
   const backend = await requireBackend();
   if (!backend) {
     return;
@@ -148,7 +167,7 @@ async function runInventory(uri?: vscode.Uri): Promise<void> {
     return;
   }
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sp-debug-"));
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sql-sp-harness-"));
   const inputPath = path.join(tmpDir, "input.sql");
 
   fs.writeFileSync(inputPath, resolved.source, "utf-8");
@@ -156,11 +175,11 @@ async function runInventory(uri?: vscode.Uri): Promise<void> {
   const channel = getOutputChannel();
   channel.show(true);
   channel.appendLine(`[${resolved.label}] Backend: ${formatBackendLabel(backend)}`);
-  channel.appendLine(`Running: ${backend.pythonPath} -m sp_debug inventory ...`);
+  channel.appendLine(`Running: ${backend.pythonPath} -m sql_sp_harness analyze ...`);
 
   const { stdout, stderr, code } = await runSpDebugCli(
     backend,
-    ["inventory", "-i", inputPath],
+    ["analyze", "-i", inputPath, "--plain"],
     tmpDir
   );
 
@@ -173,7 +192,7 @@ async function runInventory(uri?: vscode.Uri): Promise<void> {
       channel.appendLine(stdout.trim());
     }
     vscode.window.showErrorMessage(
-      `MS-SQL SP Debug inventory failed (exit ${code}). See ${OUTPUT_CHANNEL} output.`
+      `SQL SP Harness analyze failed (exit ${code}). See ${OUTPUT_CHANNEL} output.`
     );
     return;
   }
@@ -181,30 +200,23 @@ async function runInventory(uri?: vscode.Uri): Promise<void> {
   const report = stdout.trim();
   channel.appendLine(report);
 
-  const reportDoc = await vscode.workspace.openTextDocument({
-    content: report + "\n",
-    language: "plaintext",
+  showAnalyzeReportPanel(context, resolved.label, report, {
+    source: resolved.source,
+    baseName: resolved.baseName,
+    label: resolved.label,
+    sourceUri: resolved.sourceUri,
   });
-  await vscode.window.showTextDocument(reportDoc, {
-    preview: false,
-    viewColumn: vscode.ViewColumn.Beside,
-  });
-
-  vscode.window.showInformationMessage(
-    `MS-SQL SP Debug: inventory report generated for ${resolved.label}.`
-  );
 }
 
 async function verifySetup(): Promise<void> {
   const channel = getOutputChannel();
   channel.show(true);
   channel.clear();
-  channel.appendLine("MS-SQL Debug Scripter — setup verification");
+  channel.appendLine("SQL SP Harness — setup verification");
   channel.appendLine("");
 
   const settings = getSpDebugSettings();
   channel.appendLine(`spDebug.pythonPath: ${settings.pythonPath || "(auto)"}`);
-  channel.appendLine(`spDebug.preferWorkspaceDev: ${settings.preferWorkspaceDev}`);
   channel.appendLine(`spDebug.pipPackage: ${settings.pipPackage}`);
   channel.appendLine(`spDebug.traceStyle: ${settings.traceStyle}`);
   channel.appendLine("");
@@ -217,7 +229,7 @@ async function verifySetup(): Promise<void> {
     channel.appendLine("");
     channel.appendLine("Tried Python: " + resolved.pythonCandidates.join(", "));
     vscode.window.showErrorMessage(
-      "MS-SQL Debug Scripter: setup incomplete. See output channel.",
+      "SQL SP Harness: setup incomplete. See output channel.",
       "Copy pip install"
     ).then((choice) => {
       if (choice === "Copy pip install") {
@@ -234,17 +246,23 @@ async function verifySetup(): Promise<void> {
   channel.appendLine("You can generate debug scripts from any .sql file in your workspace.");
 
   vscode.window.showInformationMessage(
-    `MS-SQL Debug Scripter ready (${formatBackendLabel(resolved)}).`
+    `SQL SP Harness ready (${formatBackendLabel(resolved)}).`
   );
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  context.subscriptions.push(getOutputChannel());
   context.subscriptions.push(
     vscode.commands.registerCommand("spDebug.generate", (uri?: vscode.Uri) =>
       generateDebugScript(uri)
     ),
-    vscode.commands.registerCommand("spDebug.inventory", (uri?: vscode.Uri) =>
-      runInventory(uri)
+    vscode.commands.registerCommand(
+      "spDebug.generateAnalyzed",
+      (sqlSource: SqlSourceContext) =>
+        generateDebugScript(sqlSource.sourceUri, sqlSource)
+    ),
+    vscode.commands.registerCommand("spDebug.analyze", (uri?: vscode.Uri) =>
+      runAnalyze(context, uri)
     ),
     vscode.commands.registerCommand("spDebug.verifySetup", () => verifySetup())
   );

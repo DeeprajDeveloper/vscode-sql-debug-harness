@@ -2,14 +2,19 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "SP Debug: Generate Debug Script",
-      "type": "shell",
-      "command": "python3 -m sp_debug transform -i ${file} -o ${fileDirname}/${fileBasenameNoExtension}_debug.sql",
-      "options": {
-        "env": {
-          "PYTHONPATH": "${workspaceFolder}/tools/sp-debug/src"
-        }
+      "label": "npm: compile",
+      "type": "npm",
+      "script": "compile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
       },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "SQL SP Harness: Generate Debug Script (CLI)",
+      "type": "shell",
+      "command": "python3 -m sql_sp_harness generate -i ${file} -o ${fileDirname}/${fileBasenameNoExtension}_debug.sql",
       "group": "build",
       "presentation": {
         "reveal": "always",

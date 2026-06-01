@@ -1,14 +1,12 @@
 import * as child_process from "child_process";
-import * as fs from "fs";
-import * as path from "path";
 import * as vscode from "vscode";
 
 const PROBE_TIMEOUT_MS = 10_000;
+const MODULE_NAME = "sql_sp_harness";
 
 export type SpDebugBackend = {
   pythonPath: string;
   env: NodeJS.ProcessEnv;
-  source: "installed" | "workspace";
   version: string;
 };
 
@@ -25,31 +23,16 @@ export function isSetupFailure(
   return "kind" in resolved && resolved.kind === "setup";
 }
 
-export function workspaceRoot(): string {
-  const folders = vscode.workspace.workspaceFolders;
-  if (!folders?.length) {
-    return "";
-  }
-  return folders[0].uri.fsPath;
-}
-
-export function workspaceDevSrc(root: string): string | null {
-  const src = path.join(root, "tools", "sp-debug", "src");
-  return fs.existsSync(path.join(src, "sp_debug", "__init__.py")) ? src : null;
-}
-
 export function getSpDebugSettings(): {
   pythonPath: string;
   traceStyle: string;
-  preferWorkspaceDev: boolean;
   pipPackage: string;
 } {
   const config = vscode.workspace.getConfiguration("spDebug");
   return {
     pythonPath: (config.get<string>("pythonPath", "") ?? "").trim(),
     traceStyle: config.get<string>("traceStyle", "print"),
-    preferWorkspaceDev: config.get<boolean>("preferWorkspaceDev", true),
-    pipPackage: config.get<string>("pipPackage", "mssql-sp-debug"),
+    pipPackage: config.get<string>("pipPackage", "sql-sp-harness"),
   };
 }
 
@@ -76,22 +59,16 @@ export function pythonCandidates(configuredPath: string): string[] {
   return list;
 }
 
-function prependPythonPath(src: string, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const merged = { ...env };
-  const existing = merged.PYTHONPATH ?? "";
-  merged.PYTHONPATH = existing ? `${src}${path.delimiter}${existing}` : src;
-  return merged;
-}
-
 function probePython(
   pythonPath: string,
   env: NodeJS.ProcessEnv
 ): Promise<{ ok: true; version: string } | { ok: false; error: string }> {
   return new Promise((resolve) => {
+    const importScript = `import ${MODULE_NAME}; print(${MODULE_NAME}.__version__)`;
     const args =
       pythonPath === "py"
-        ? ["-3", "-c", "import sp_debug; print(sp_debug.__version__)"]
-        : ["-c", "import sp_debug; print(sp_debug.__version__)"];
+        ? ["-3", "-c", importScript]
+        : ["-c", importScript];
 
     const proc = child_process.spawn(pythonPath, args, { env, shell: false });
     let stdout = "";
@@ -125,7 +102,7 @@ function probePython(
 export async function resolveSpDebugBackend(): Promise<
   SpDebugBackend | SpDebugSetupFailure
 > {
-  const { pythonPath, preferWorkspaceDev } = getSpDebugSettings();
+  const { pythonPath } = getSpDebugSettings();
   const candidates = pythonCandidates(pythonPath);
 
   for (const py of candidates) {
@@ -134,28 +111,8 @@ export async function resolveSpDebugBackend(): Promise<
       return {
         pythonPath: py,
         env: process.env,
-        source: "installed",
         version: result.version,
       };
-    }
-  }
-
-  if (preferWorkspaceDev) {
-    const root = workspaceRoot();
-    const src = root ? workspaceDevSrc(root) : null;
-    if (src) {
-      const devEnv = prependPythonPath(src, process.env);
-      for (const py of candidates) {
-        const result = await probePython(py, devEnv);
-        if (result.ok) {
-          return {
-            pythonPath: py,
-            env: devEnv,
-            source: "workspace",
-            version: result.version,
-          };
-        }
-      }
     }
   }
 
@@ -163,7 +120,7 @@ export async function resolveSpDebugBackend(): Promise<
   const installCmd = `${candidates[0] ?? "python3"} -m pip install ${pipPackage}`;
   return {
     kind: "setup",
-    message: `sp-debug is not available. Install the Python package, then reload the window.\n\n  ${installCmd}`,
+    message: `sql-sp-harness is not available. Install the Python package, then reload the window.\n\n  ${installCmd}`,
     pipPackage,
     pythonCandidates: candidates,
   };
@@ -177,8 +134,8 @@ export function runSpDebugCli(
   return new Promise((resolve) => {
     const spawnArgs =
       backend.pythonPath === "py"
-        ? ["-3", "-m", "sp_debug", ...args]
-        : ["-m", "sp_debug", ...args];
+        ? ["-3", "-m", MODULE_NAME, ...args]
+        : ["-m", MODULE_NAME, ...args];
 
     const proc = child_process.spawn(backend.pythonPath, spawnArgs, {
       env: backend.env,
@@ -198,7 +155,7 @@ export async function promptSetupFailure(
 ): Promise<SpDebugBackend | null> {
   const pipCmd = `${failure.pythonCandidates[0] ?? "python3"} -m pip install ${failure.pipPackage}`;
   const choice = await vscode.window.showErrorMessage(
-    "MS-SQL Debug Scripter: Python backend not found.",
+    "SQL SP Harness: Python backend not found.",
     "Copy pip install",
     "Open Settings",
     "Verify setup"
@@ -218,9 +175,5 @@ export async function promptSetupFailure(
 }
 
 export function formatBackendLabel(backend: SpDebugBackend): string {
-  const via =
-    backend.source === "workspace"
-      ? "workspace tools/sp-debug"
-      : "pip-installed sp_debug";
-  return `${backend.pythonPath} (${via}, v${backend.version})`;
+  return `${backend.pythonPath} (sql-sp-harness v${backend.version})`;
 }
