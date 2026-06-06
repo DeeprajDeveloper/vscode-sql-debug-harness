@@ -7,7 +7,7 @@
     "url": "https://github.com/DeeprajDeveloper/vscode-sql-sp-harness"
   },
   "license": "MIT",
-  "version": "2.0.0",
+  "version": "0.0.1",
   "publisher": "DeeprajAdhikary",
   "engines": {
     "vscode": "^1.85.0"
@@ -20,90 +20,170 @@
     "commands": [
       {
         "command": "spDebug.generate",
-        "title": "SQL SP Harness: Generate Debug Script",
+        "title": "Generate Debug Script",
+        "category": "SQL SP Harness",
         "icon": "$(debug-alt)"
       },
       {
         "command": "spDebug.analyze",
-        "title": "SQL SP Harness: Analyze Procedure",
+        "title": "Analyze Procedure",
+        "category": "SQL SP Harness",
         "icon": "$(list-flat)"
       },
       {
         "command": "spDebug.verifySetup",
-        "title": "SQL SP Harness: Verify Python Setup",
+        "title": "Verify Python Setup",
+        "category": "SQL SP Harness",
         "icon": "$(check-all)"
+      },
+      {
+        "command": "spDebug.configure",
+        "title": "Configure Settings",
+        "category": "SQL SP Harness",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "spDebug.openSettings",
+        "title": "Open Extension Settings",
+        "category": "SQL SP Harness",
+        "icon": "$(settings)"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "spDebug.submenu",
+        "label": "SQL SP Harness",
+        "icon": "$(debug-alt)"
       }
     ],
     "menus": {
-      "explorer/context": [
+      "spDebug.submenu": [
         {
           "command": "spDebug.generate",
-          "when": "resourceExtname == .sql",
-          "group": "7_modification@1"
+          "group": "1_run@1"
         },
         {
           "command": "spDebug.analyze",
+          "group": "1_run@2"
+        },
+        {
+          "command": "spDebug.verifySetup",
+          "group": "2_setup@1"
+        },
+        {
+          "command": "spDebug.configure",
+          "group": "2_setup@2"
+        },
+        {
+          "command": "spDebug.openSettings",
+          "group": "2_setup@3"
+        }
+      ],
+      "explorer/context": [
+        {
+          "submenu": "spDebug.submenu",
           "when": "resourceExtname == .sql",
-          "group": "7_modification@2"
+          "group": "7_modification"
         }
       ],
       "editor/context": [
         {
-          "command": "spDebug.generate",
+          "submenu": "spDebug.submenu",
           "when": "resourceLangId == sql",
-          "group": "navigation@1"
-        },
-        {
-          "command": "spDebug.analyze",
-          "when": "resourceLangId == sql",
-          "group": "navigation@2"
+          "group": "navigation"
         }
       ],
       "editor/title/context": [
         {
-          "command": "spDebug.generate",
+          "submenu": "spDebug.submenu",
           "when": "resourceLangId == sql",
-          "group": "navigation@1"
-        },
-        {
-          "command": "spDebug.analyze",
-          "when": "resourceLangId == sql",
-          "group": "navigation@2"
+          "group": "navigation"
         }
       ]
     },
-    "configuration": {
-      "title": "SQL SP Harness",
-      "properties": {
-        "spDebug.pythonPath": {
-          "type": "string",
-          "default": "",
-          "description": "Python executable for sql-sp-harness. Leave empty to try python3, python, and py (Windows)."
-        },
-        "spDebug.pipPackage": {
-          "type": "string",
-          "default": "sql-sp-harness",
-          "description": "PyPI package name shown in install hints (pip install <name>)."
-        },
-        "spDebug.traceStyle": {
-          "type": "string",
-          "enum": ["raiserror", "print"],
-          "default": "print",
-          "description": "Trace line style for generated debug scripts (print or raiserror)."
+    "configuration": [
+      {
+        "title": "SQL SP Harness",
+        "order": 0,
+        "properties": {
+          "spDebug.pythonPath": {
+            "type": "string",
+            "default": "",
+            "order": 1,
+            "markdownDescription": "Python executable for [sql-sp-harness](https://deeprajdeveloper.github.io/sql-sp-harness/). Leave empty to try `python3`, `python`, and `py` (Windows)."
+          },
+          "spDebug.pipPackage": {
+            "type": "string",
+            "default": "sql-sp-harness",
+            "order": 2,
+            "description": "PyPI package name installed automatically and shown in setup hints."
+          },
+          "spDebug.autoInstallBackend": {
+            "type": "boolean",
+            "default": true,
+            "order": 3,
+            "description": "On activation, if Python is found but sql-sp-harness is missing, run pip install automatically."
+          }
+        }
+      },
+      {
+        "title": "SQL SP Harness › Generate",
+        "order": 1,
+        "properties": {
+          "spDebug.traceStyle": {
+            "type": "string",
+            "enum": ["raiserror", "print"],
+            "enumDescriptions": [
+              "RAISERROR … WITH NOWAIT (Messages tab in SSMS)",
+              "PRINT traces (default)"
+            ],
+            "default": "print",
+            "order": 1,
+            "description": "Trace line style for generated debug scripts."
+          }
+        }
+      },
+      {
+        "title": "SQL SP Harness › Logging",
+        "order": 2,
+        "properties": {
+          "spDebug.logToOutput": {
+            "type": "boolean",
+            "default": true,
+            "order": 1,
+            "markdownDescription": "Write the sql-sp-harness step log (`--log-file`) to the **SQL SP Harness** output channel after analyze/generate."
+          },
+          "spDebug.saveLogFile": {
+            "type": "boolean",
+            "default": false,
+            "order": 2,
+            "description": "Also save the step log as <procedure>.log beside the source .sql file (when saved on disk)."
+          },
+          "spDebug.quietWhenLogging": {
+            "type": "boolean",
+            "default": true,
+            "order": 3,
+            "description": "Pass --quiet to generate when step logging is enabled, so progress goes to the log/output channel instead of stderr."
+          }
         }
       }
-    }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "vscode:prepublish": "npm run compile",
-    "package": "mkdir -p dist && vsce package --out dist/sql-sp-harness.vsix --allow-missing-repository"
+    "package": "mkdir -p dist && vsce package --out dist/sql-sp-harness.vsix --allow-missing-repository",
+    "docs:build": "bash scripts/build-docs.sh",
+    "docs:pdf": "bash scripts/build-docs.sh --pdf",
+    "docs:serve": "npm run docs:build && npx --yes serve docs -p 8080"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "2.32.0",
+    "md-to-pdf": "^5.2.4",
+    "sass": "^1.77.0",
     "typescript": "^5.3.0"
   }
 }

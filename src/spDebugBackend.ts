@@ -27,12 +27,18 @@ export function getSpDebugSettings(): {
   pythonPath: string;
   traceStyle: string;
   pipPackage: string;
+  logToOutput: boolean;
+  saveLogFile: boolean;
+  quietWhenLogging: boolean;
 } {
   const config = vscode.workspace.getConfiguration("spDebug");
   return {
     pythonPath: (config.get<string>("pythonPath", "") ?? "").trim(),
     traceStyle: config.get<string>("traceStyle", "print"),
     pipPackage: config.get<string>("pipPackage", "sql-sp-harness"),
+    logToOutput: config.get<boolean>("logToOutput", true),
+    saveLogFile: config.get<boolean>("saveLogFile", false),
+    quietWhenLogging: config.get<boolean>("quietWhenLogging", true),
   };
 }
 

@@ -1,0 +1,105 @@
+@use "sass:map";
+@use "sass:meta";
+@use "sass:string";
+@use "variables" as *;
+
+$theme-tokens: (
+  dark: (
+    color-scheme: dark,
+    bg: #0f1419,
+    surface: #1a2332,
+    surface-2: #243044,
+    text: #e7ecf3,
+    muted: #9aa8bc,
+    accent: #3b9edd,
+    accent-dim: #2a7ab8,
+    accent-contrast: #061018,
+    success: #3dd68c,
+    warn: #f0b429,
+    border: #2e3d52,
+    code-bg: #121a24,
+    header-bg: rgba(15, 20, 25, 0.9),
+    callout-bg: rgba(240, 180, 41, 0.08),
+    select-bg: #1a2332,
+    card-gradient: linear-gradient(
+      165deg,
+      #223248 0%,
+      #1a2332 48%,
+      #151d2a 100%
+    ),
+    card-shadow: "inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0, 0, 0, 0.12), 0 8px 28px rgba(0, 0, 0, 0.14)",
+    btn-primary-gradient: linear-gradient(
+      180deg,
+      #52b5eb 0%,
+      #3b9edd 45%,
+      #2f8fc9 100%
+    ),
+    btn-primary-gradient-hover: linear-gradient(180deg, #3b9edd 0%, #2a7ab8 100%),
+    btn-primary-shadow: "inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 14px rgba(59, 158, 221, 0.22)",
+    btn-secondary-gradient: linear-gradient(180deg, #2a384d 0%, #1e2a3d 100%),
+    btn-secondary-gradient-hover: linear-gradient(180deg, #304159 0%, #243044 100%),
+    btn-secondary-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    icon-btn-gradient: linear-gradient(180deg, #2a384d 0%, #243044 100%),
+    icon-btn-gradient-hover: linear-gradient(180deg, #304159 0%, #1a2332 100%),
+  ),
+  light: (
+    color-scheme: light,
+    bg: #f4f7fb,
+    surface: #ffffff,
+    surface-2: #e8eef6,
+    text: #1a2332,
+    muted: #5a6b82,
+    accent: #1565a8,
+    accent-dim: #0f4d82,
+    accent-contrast: #ffffff,
+    success: #0d7a4a,
+    warn: #9a6700,
+    border: #c5d3e3,
+    code-bg: #eef2f8,
+    header-bg: rgba(244, 247, 251, 0.92),
+    callout-bg: rgba(240, 180, 41, 0.15),
+    select-bg: #ffffff,
+    card-gradient: linear-gradient(
+      165deg,
+      #ffffff 0%,
+      #fafbfd 52%,
+      #f0f4f9 100%
+    ),
+    card-shadow: "inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(26, 35, 50, 0.05), 0 6px 20px rgba(26, 35, 50, 0.06)",
+    btn-primary-gradient: linear-gradient(
+      180deg,
+      #1b7abd 0%,
+      #1565a8 48%,
+      #125691 100%
+    ),
+    btn-primary-gradient-hover: linear-gradient(180deg, #1565a8 0%, #0f4d82 100%),
+    btn-primary-shadow: "inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(15, 77, 130, 0.12), 0 4px 14px rgba(21, 101, 168, 0.18)",
+    btn-secondary-gradient: linear-gradient(180deg, #ffffff 0%, #eef2f8 100%),
+    btn-secondary-gradient-hover: linear-gradient(180deg, #f8fafc 0%, #e8eef6 100%),
+    btn-secondary-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    icon-btn-gradient: linear-gradient(180deg, #ffffff 0%, #eef2f8 100%),
+    icon-btn-gradient-hover: linear-gradient(180deg, #f8fafc 0%, #e8eef6 100%),
+  ),
+);
+
+:root {
+  --font-heading: #{$font-heading-stack};
+  --font-body: #{$font-body-stack};
+  --mono: #{$font-mono-stack};
+}
+
+@each $name, $tokens in $theme-tokens {
+  html[data-theme="#{$name}"] {
+    color-scheme: map.get($tokens, color-scheme);
+
+    @each $key, $value in $tokens {
+      @if $key != color-scheme {
+        @if meta.type-of($value) == string {
+          --#{$key}: #{string.unquote($value)};
+        } @else {
+          --#{$key}: #{$value};
+        }
+      }
+    }
+  }
+}
