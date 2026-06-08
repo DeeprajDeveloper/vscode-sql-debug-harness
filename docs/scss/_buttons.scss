@@ -41,3 +41,15 @@
     }
   }
 }
+
+#install-from-marketplace {
+  cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
+  &:hover {
+    border-color: $border;
+    text-decoration: none;
+    transform: none;
+    transition: none;
+  }
+}

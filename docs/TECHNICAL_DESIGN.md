@@ -5,7 +5,7 @@
 |-------|-------|
 | **Project** | vscode-sql-sp-harness |
 | **Extension ID** | `deeprajadhikary.sql-sp-harness` |
-| **Version** | 0.0.1 |
+| **Version** | 0.1.0-beta.1 |
 | **Backend** | [sql-sp-harness](https://pypi.org/project/sql-sp-harness/) (PyPI) |
 | **License** | MIT |
 | **Last updated** | 2026-06-06 |

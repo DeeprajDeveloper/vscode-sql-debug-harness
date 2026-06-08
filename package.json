@@ -7,7 +7,7 @@
     "url": "https://github.com/DeeprajDeveloper/vscode-sql-sp-harness"
   },
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "0.1.0-beta.1",
   "publisher": "DeeprajAdhikary",
   "engines": {
     "vscode": "^1.85.0"
