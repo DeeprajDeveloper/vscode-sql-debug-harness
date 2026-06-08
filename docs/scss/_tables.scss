@@ -1,0 +1,30 @@
+@use "variables" as *;
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-size-nav;
+}
+
+th,
+td {
+  text-align: left;
+  padding: $space-lg $space-2xl;
+  border-bottom: $border-width solid $border;
+}
+
+th {
+  color: $muted;
+  font-weight: $font-weight-semibold;
+  background: $surface-2;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: $border-width solid $border;
+  border-radius: $radius-sm;
+}

@@ -1,0 +1,60 @@
+@use "variables" as *;
+
+.hero {
+  padding: $space-10xl 0 $space-9xl;
+  text-align: center;
+
+  img {
+    width: 100%;
+    height: auto;
+    margin-bottom: $space-6xl;
+  }
+
+  .lead {
+    color: $muted;
+    font-size: $font-size-md;
+    max-width: $content-max-lead;
+    margin: 0 auto $space-7xl;
+  }
+}
+
+.hero-title {
+  font-size: clamp($hero-title-min, $hero-title-fluid, $hero-title-max);
+  font-family: $font-heading;
+  margin: 0 0 $space-3xl;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-heading;
+}
+
+.hero-subtitle {
+  font-size: $font-size-md;
+  margin: 0 0 $space-6xl;
+  font-weight: $font-weight-normal;
+  line-height: $line-height-subtitle;
+  color: $muted;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $space-md;
+  margin-bottom: $space-7xl;
+}
+
+.badge {
+  display: inline-block;
+  padding: $space-xs $space-lg;
+  border-radius: $radius-pill;
+  font-size: $font-size-2xs;
+  background: $surface;
+  border: $border-width solid $border;
+  color: $muted;
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $space-xl;
+}

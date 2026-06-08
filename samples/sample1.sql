@@ -18,24 +18,14 @@ go
 *************************************************************************************/
 create procedure [dbo].[usp_ComplexProcedureName]
 	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int,
-	@field1 int
+	@field2 int,
+	@field3 int,
+	@field5 int,
+	@field6 int,
+	@field7 int,
+	@field8 int,
+	@field9 int,
+	@field10 int
 as
 
 -- comment here

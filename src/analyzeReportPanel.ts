@@ -132,7 +132,6 @@ function buildHtml(
     }
     .header h1 {
       margin: 0 0 4px;
-      font-size: 1.15em;
       font-weight: 600;
     }
     .header .subtitle {
@@ -212,19 +211,19 @@ function buildHtml(
   <div class="header">
     <div class="header-row">
       <div>
-        <h1>Procedure Analysis</h1>
-        <div class="subtitle">${escapeHtml(fileLabel)}</div>
+        <h1>SQL SP Harness: Analysis Report</h1>
+        <div class="subtitle">File Name: ${escapeHtml(fileLabel)}</div>
       </div>
       <div class="header-actions">
-        <button type="button" id="generate-btn" class="action-btn">Generate Debug Script</button>
-        <button type="button" id="save-btn" class="action-btn secondary">Save Report</button>
+        <button type="button" id="generate-btn" class="action-btn">🔃 Generate Debug Script</button>
+        <button type="button" id="save-btn" class="action-btn secondary">💾 Save Analysis Report</button>
       </div>
     </div>
   </div>
   <div class="tabs">
-    <button type="button" class="tab active" data-tab="summary">Summary (${summaryRows.length})</button>
-    <button type="button" class="tab" data-tab="warnings">Warnings (${warningRows.length})</button>
-    <button type="button" class="tab" data-tab="identified">Identified (${report.identified.length})</button>
+    <button type="button" class="tab active" data-tab="summary">📊 Summary (${summaryRows.length})</button>
+    <button type="button" class="tab" data-tab="warnings">⚠️ Warnings (${warningRows.length})</button>
+    <button type="button" class="tab" data-tab="identified">🔍 Identified (${report.identified.length})</button>
   </div>
   <div id="summary" class="panel active">${summaryTable}</div>
   <div id="warnings" class="panel">${warningsTable}</div>

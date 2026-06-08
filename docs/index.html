@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta
+			name="description"
+			content="SQL SP Harness — VS Code extension to analyze T-SQL stored procedures and generate safe debug harness scripts."
+		/>
+		<title>SQL SP Harness — VS Code Extension</title>
+		<link rel="icon" type="image/png" href="./images/extension-logo.png" />
+		<script>
+			(function () {
+				var key = "vscode-sql-sp-harness-theme";
+				var stored = localStorage.getItem(key);
+				var theme =
+					stored === "light" || stored === "dark"
+						? stored
+						: window.matchMedia("(prefers-color-scheme: light)").matches
+							? "light"
+							: "dark";
+				document.documentElement.setAttribute("data-theme", theme);
+			})();
+		</script>
+		<link rel="stylesheet" href="./scss/css/styles.css" />
+	</head>
+	<body>
+		<div class="layout">
+			<aside class="sidebar" id="sidebar">
+				<a class="brand" href="#">
+					<img src="./images/extension-logo.png" alt="SQL SP Harness" height="32" />
+					<span class="brand-text">SQL SP Harness</span>
+				</a>
+				<div
+					class="sidebar-version"
+					id="package-version"
+					aria-label="Current extension version"
+				>
+					<span class="sidebar-version__value">Version: 0.0.1</span>
+				</div>
+				<div class="divider"></div>
+				<nav class="sidebar-nav" aria-label="Primary">
+					<a class="nav-item" href="#features">What it does ?</a>
+					<a class="nav-item" href="#how-it-works">How it works ?</a>
+					<a class="nav-item" href="#usage">Usage</a>
+					<a class="nav-item" href="#install">Install &amp; quick start</a>
+					<a class="nav-item" href="#settings">Settings</a>
+					<a class="nav-item" href="technical-design.html">Tech. design document</a>
+					<div class="sidebar-actions">
+						<a
+							class="sidebar-btn"
+							href="https://github.com/DeeprajDeveloper/vscode-sql-sp-harness"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="View extension on GitHub"
+							title="View extension on GitHub"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" height="20" width="20" aria-hidden="true">
+								<path fill="currentColor" d="M10 0C4.475 0 0 4.475 0 10c0 4.425 2.8625 8.1625 6.8375 9.4875 0.5 0.0875 0.6875 -0.2125 0.6875 -0.475 0 -0.2375 -0.0125 -1.025 -0.0125 -1.8625 -2.5125 0.4625 -3.1625 -0.6125 -3.3625 -1.175 -0.1125 -0.2875 -0.6 -1.175 -1.025 -1.4125 -0.35 -0.1875 -0.85 -0.65 -0.0125 -0.6625 0.7875 -0.0125 1.35 0.725 1.5375 1.025 0.9 1.5125 2.3375 1.0875 2.9125 0.825 0.0875 -0.65 0.35 -1.0875 0.6375 -1.3375 -2.225 -0.25 -4.55 -1.1125 -4.55 -4.9375 0 -1.0875 0.3875 -1.9875 1.025 -2.6875 -0.1 -0.25 -0.45 -1.275 0.1 -2.65 0 0 0.8375 -0.2625 2.75 1.025 0.8 -0.225 1.65 -0.3375 2.5 -0.3375s1.7 0.1125 2.5 0.3375c1.9125 -1.3 2.75 -1.025 2.75 -1.025 0.55 1.375 0.2 2.4 0.1 2.65 0.6375 0.7 1.025 1.5875 1.025 2.6875 0 3.8375 -2.3375 4.6875 -4.5625 4.9375 0.3625 0.3125 0.675 0.9125 0.675 1.85 0 1.3375 -0.0125 2.4125 -0.0125 2.75 0 0.2625 0.1875 0.575 0.6875 0.475A10.0125 10.0125 0 0 0 20 10c0 -5.525 -4.475 -10 -10 -10" />
+							</svg>
+						</a>
+						<button
+							type="button"
+							class="sidebar-btn"
+							id="theme-toggle"
+							aria-label="Switch to light theme"
+							title="Switch to light theme"
+							aria-pressed="false"
+						>
+							<svg class="theme-icon theme-icon--sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" height="20" width="20" aria-hidden="true">
+								<path fill="currentColor" d="M2.5 7.5a7.5 7.5 0 1 1 12.7175 5.387c-0.254 0.245 -0.449 0.5 -0.566 0.774l-0.953 2.211a0.625 0.625 0 0 1 -0.575 0.377H8.273a1.25 1.25 0 0 1 -1.118 -0.691L6.875 18.75a0.625 0.625 0 0 1 0 -1.25 0.625 0.625 0 0 1 0 -1.25 0.625 0.625 0 0 1 -0.575 -0.377l-0.951 -2.213a2.5 2.5 0 0 0 -0.566 -0.772A7.475 7.475 0 0 1 2.5 7.5m7.5 -6.25a6.25 6.25 0 0 0 -4.349 10.74c0.329 0.318 0.643 0.705 0.845 1.176L7.288 15h5.427l0.79 -1.834c0.203 -0.471 0.516 -0.859 0.845 -1.176A6.25 6.25 0 0 0 10 1.25" />
+							</svg>
+							<svg class="theme-icon theme-icon--moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" height="20" width="20" aria-hidden="true">
+								<path fill="currentColor" d="M2.788 5.438A7.5 7.5 0 0 0 2.5 7.5c0 2.114 0.875 4.025 2.283 5.387 0.254 0.245 0.449 0.5 0.566 0.774l0.953 2.211a0.625 0.625 0 0 0 0.575 0.377 0.625 0.625 0 0 0 0 1.25 0.625 0.625 0 0 0 0 1.25l0.28 0.559a1.25 1.25 0 0 0 1.118 0.691h3.455a1.25 1.25 0 0 0 1.118 -0.691L13.125 18.75a0.625 0.625 0 0 0 0 -1.25 0.625 0.625 0 0 0 0 -1.25 0.625 0.625 0 0 0 0.36 -0.114L12.348 15H7.288l-0.79 -1.834a3.75 3.75 0 0 0 -0.845 -1.176 6.225 6.225 0 0 1 -1.819 -5.506zm1.985 -3.316 0.885 0.884a6.25 6.25 0 0 1 8.838 8.838l0.884 0.884a7.5 7.5 0 0 0 -10.605 -10.605zm-2.715 -0.064a0.625 0.625 0 0 1 0.885 0l15 15a0.625 0.625 0 0 1 -0.885 0.885l-15 -15a0.625 0.625 0 0 1 0 -0.885" />
+							</svg>
+						</button>
+						<a
+							class="sidebar-btn"
+							href="https://github.com/DeeprajDeveloper/vscode-sql-sp-harness/issues/new"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="Report a bug on GitHub"
+							title="Report a bug on GitHub"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" height="24" width="24" aria-hidden="true">
+								<path fill="currentColor" d="M12 21c-1.05 0 -2.00415 -0.29585 -2.8625 -0.8875 -0.85835 -0.59165 -1.55415 -1.35415 -2.0875 -2.2875l-2.5 1.425 -0.75 -1.275 2.625 -1.525c-0.08335 -0.28335 -0.15835 -0.56665 -0.225 -0.85 -0.06665 -0.28335 -0.11665 -0.56665 -0.15 -0.85H3v-1.5h3.05c0.03335 -0.28335 0.08335 -0.56665 0.15 -0.85s0.14165 -0.56665 0.225 -0.85L3.8 10l0.75 -1.275 2.475 1.45c0.15 -0.26665 0.31665 -0.5125 0.5 -0.7375 0.18335 -0.225 0.375 -0.44585 0.575 -0.6625 -0.03335 -0.13335 -0.05835 -0.2625 -0.075 -0.3875 -0.01665 -0.125 -0.025 -0.25415 -0.025 -0.3875 0 -0.46665 0.0875 -0.92085 0.2625 -1.3625 0.175 -0.44165 0.42085 -0.8375 0.7375 -1.1875l-1.65 -1.625 1.05 -1.075L10.175 4.5c0.28335 -0.166665 0.575 -0.291665 0.875 -0.375 0.3 -0.083335 0.61665 -0.125 0.95 -0.125 0.33335 0 0.65 0.041665 0.95 0.125 0.3 0.083335 0.59165 0.208335 0.875 0.375l1.775 -1.75 1.05 1.075 -1.65 1.65c0.3 0.35 0.5375 0.74165 0.7125 1.175 0.175 0.43335 0.2625 0.88335 0.2625 1.35 0 0.13335 -0.00415 0.25835 -0.0125 0.375 -0.00835 0.11665 -0.02915 0.24165 -0.0625 0.375 0.2 0.21665 0.3875 0.4375 0.5625 0.6625 0.175 0.225 0.3375 0.47085 0.4875 0.7375l2.5 -1.4 0.75 1.275 -2.625 1.5c0.1 0.28335 0.17915 0.56665 0.2375 0.85 0.05835 0.28335 0.10415 0.575 0.1375 0.875H21v1.5h-3.05c-0.03335 0.28335 -0.07915 0.57085 -0.1375 0.8625 -0.05835 0.29165 -0.1375 0.57915 -0.2375 0.8625L20.2 18l-0.75 1.275 -2.5 -1.45c-0.53335 0.93335 -1.22915 1.69585 -2.0875 2.2875S13.05 21 12 21Zm-2.475 -13.35c0.38335 -0.21665 0.78335 -0.37915 1.2 -0.4875 0.41665 -0.10835 0.84165 -0.1625 1.275 -0.1625 0.43335 0 0.85415 0.05415 1.2625 0.1625s0.80415 0.2625 1.1875 0.4625c-0.1 -0.55 -0.39165 -1.04165 -0.875 -1.475 -0.48335 -0.43335 -1.00835 -0.65 -1.575 -0.65 -0.56665 0 -1.09585 0.21665 -1.5875 0.65 -0.49165 0.43335 -0.7875 0.93335 -0.8875 1.5ZM12 19.5c1.28335 0 2.35415 -0.575 3.2125 -1.725C16.07085 16.625 16.5 15.36665 16.5 14c0 -1.25 -0.40415 -2.47915 -1.2125 -3.6875C14.47915 9.10415 13.38335 8.5 12 8.5s-2.47915 0.60415 -3.2875 1.8125C7.90415 11.52085 7.5 12.75 7.5 14c0 1.36665 0.42915 2.625 1.2875 3.775C9.64585 18.925 10.71665 19.5 12 19.5Zm-0.75 -2.5V11h1.5v6h-1.5Z" />
+							</svg>
+						</a>
+						<a
+							class="sidebar-btn"
+							href="mailto:deepraj.developer@gmail.com"
+							aria-label="Send an email to the developer"
+							title="Send an email to the developer"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" height="20" width="20" aria-hidden="true">
+								<path fill="currentColor" d="M19.046 2.462H0.954c-0.416 0 -0.754 0.338 -0.754 0.754v12.815c0 0.833 0.675 1.508 1.508 1.508h16.585c0.833 0 1.508 -0.675 1.508 -1.508V3.215c0 -0.416 -0.338 -0.754 -0.754 -0.754Zm-1.938 1.508L10 10.485 2.892 3.969Zm1.184 12.062H1.708V4.929l7.783 7.134c0.288 0.265 0.731 0.265 1.02 0l7.783 -7.134v11.101Z" />
+							</svg>
+						</a>
+					</div>
+				</nav>
+
+				<footer class="site-footer">
+					<div class="footer-container">
+						<span
+							><strong>License:</strong>
+							<a
+								href="https://github.com/DeeprajDeveloper/vscode-sql-sp-harness/blob/main/LICENSE"
+								target="_blank"
+								rel="noopener noreferrer"
+								>Open-source MIT</a
+							></span
+						>
+						<span
+							><strong>Backend:</strong>
+							<a
+								href="https://pypi.org/project/sql-sp-harness/"
+								target="_blank"
+								rel="noopener noreferrer"
+								>sql-sp-harness</a
+							></span
+						>
+					</div>
+				</footer>
+
+				<p class="site-footer-note">
+					<strong>Not affiliated with Microsoft.</strong>
+					<br />SQL Server and T-SQL are used descriptively only.
+				</p>
+			</aside>
+
+			<div class="sidebar-backdrop" id="sidebar-backdrop" aria-hidden="true"></div>
+
+			<div class="layout-main">
+				<header class="mobile-bar">
+					<button
+						type="button"
+						class="menu-toggle"
+						id="menu-toggle"
+						aria-expanded="false"
+						aria-controls="sidebar"
+					>
+						Menu
+					</button>
+				</header>
+				<main>
+					<section class="hero">
+						<div class="container">
+							<p class="hero-title">
+								Analyze and debug T-SQL stored procedures right from your VS Code IDE
+							</p>
+							<p class="lead">
+								A VS Code / Cursor extension that wraps
+								<a href="https://deeprajdeveloper.github.io/sql-sp-harness/">sql-sp-harness</a>
+								to generate <strong>safe debug harness scripts</strong> — DML replaced with
+								<code>SELECT</code> previews, variables traced with
+								<code>PRINT</code>, no writes to real tables.
+							</p>
+							<div class="badges">
+								<span class="badge">VS Code ^1.85</span>
+								<span class="badge">Python 3.10+ backend</span>
+								<span class="badge">MIT License</span>
+							</div>
+							<div class="cta-row">
+								<a class="btn btn-primary" href="#install">Get started</a>
+								<a
+									class="btn btn-secondary"
+									href="https://github.com/DeeprajDeveloper/vscode-sql-sp-harness"
+									target="_blank"
+									rel="noopener noreferrer"
+									>View on GitHub</a
+								>
+							</div>
+						</div>
+					</section>
+
+					<section id="features">
+						<div class="container">
+							<h2>What it does ?</h2>
+							<p class="section-intro">
+								Not a live debugger — a thin UI shell around the Python CLI. It generates a
+								<strong>static harness script</strong> you review, then run on a dev database.
+							</p>
+							<div class="card-grid">
+								<article class="card">
+									<h3>Analyze Procedure</h3>
+									<p>
+										Tabbed panel with Summary counts, Warnings, and Identified line-level
+										detail. Save the report or jump to source lines.
+									</p>
+								</article>
+								<article class="card">
+									<h3>Generate Debug Script</h3>
+									<p>
+										Opens a new SQL tab with the harness script — DML stubbed, variables
+										traced, deploy preamble removed.
+									</p>
+								</article>
+								<article class="card">
+									<h3>Automatic backend setup</h3>
+									<p>
+										Detects Python on activation and runs
+										<code>pip install sql-sp-harness</code> when the package is missing.
+									</p>
+								</article>
+								<article class="card">
+									<h3>Right-click &amp; palette</h3>
+									<p>
+										Commands on any <code>.sql</code> file from Explorer, editor, or tab.
+										Selection support when text is highlighted in the editor.
+									</p>
+								</article>
+							</div>
+							<div class="callout">
+								<strong>Not a live debugger.</strong> This tool does not attach breakpoints or
+								step through procedures on SQL Server.
+							</div>
+						</div>
+					</section>
+
+					<section id="how-it-works">
+						<div class="container">
+							<h2>How it works ?</h2>
+							<p class="section-intro">
+								The extension spawns <code>python -m sql_sp_harness</code> with your SQL file
+								(or selection) and surfaces results in VS Code panels and output channels.
+							</p>
+							<div
+								class="flow"
+								role="img"
+								aria-label="Open SQL, analyze, generate harness"
+							>
+								<div class="flow-step">
+									<strong>Open .sql</strong>
+									Right-click or Command Palette on any stored procedure file
+								</div>
+								<span class="flow-arrow" aria-hidden="true">→</span>
+								<div class="flow-step">
+									<strong>Analyze</strong>
+									Review Summary, Warnings, and Identified statements in a tabbed panel
+								</div>
+								<span class="flow-arrow" aria-hidden="true">→</span>
+								<div class="flow-step">
+									<strong>Generate</strong>
+									New SQL tab with the debug harness ready to run on a dev database
+								</div>
+							</div>
+							<div class="callout">
+								<strong>Status bar.</strong> Backend readiness appears bottom-right. Click it
+								or run <strong>Verify Python Setup</strong> for diagnostics.
+							</div>
+						</div>
+					</section>
+
+					<section id="usage">
+						<div class="container">
+							<h2>Usage</h2>
+							<p class="section-intro">
+								All commands live under the <strong>SQL SP Harness</strong> submenu and
+								Command Palette.
+							</p>
+							<h3 style="margin-top: 0">Right-click submenu</h3>
+							<div class="snippet-block">
+								<button type="button" class="snippet-block__copy">Copy</button>
+								<pre><code>SQL SP Harness ▸
+  Generate Debug Script
+  Analyze Procedure
+  ─────────────────────
+  Verify Python Setup
+  Configure Settings
+  Open Extension Settings</code></pre>
+							</div>
+							<p class="section-intro" style="margin-top: 1.25rem">
+								Use <strong>Configure Settings</strong> for an interactive setup wizard, or
+								search <code>@ext:DeeprajAdhikary.sql-sp-harness</code> in Settings.
+							</p>
+						</div>
+					</section>
+
+					<section id="install">
+						<div class="container">
+							<h2>Installation and Quick Start</h2>
+							<p class="section-intro">
+								Requires VS Code ^1.85, Python 3.10+, and the
+								<a href="https://pypi.org/project/sql-sp-harness/">sql-sp-harness</a> PyPI
+								package (auto-installed by default).
+							</p>
+							<div class="code-tabs" data-code-tabs>
+								<div class="code-tabs__list" role="tablist" aria-label="Install method">
+									<button
+										type="button"
+										class="code-tabs__tab"
+										role="tab"
+										id="tab-marketplace"
+										aria-selected="true"
+										aria-controls="panel-marketplace"
+										data-tab="marketplace"
+									>
+										Marketplace
+									</button>
+									<button
+										type="button"
+										class="code-tabs__tab"
+										role="tab"
+										id="tab-source"
+										aria-selected="false"
+										aria-controls="panel-source"
+										data-tab="source"
+										tabindex="-1"
+									>
+										From source
+									</button>
+								</div>
+								<div
+									class="code-tabs__panel"
+									role="tabpanel"
+									id="panel-marketplace"
+									aria-labelledby="tab-marketplace"
+									data-tab-panel="marketplace"
+									data-active="true"
+								>
+									<div class="install-steps">
+										<div class="install-step">
+											<p class="install-step__note"><strong>Step 1.</strong> Install the extension</p>
+											<!-- MARKETPLACE: set href when published — https://marketplace.visualstudio.com/items?itemName=DeeprajAdhikary.sql-sp-harness -->
+											<p style="margin: 0 0 0.75rem">
+												<a class="btn btn-primary" id="install-from-marketplace" href="javascript:void(0);">VS Code Marketplace (coming soon)</a>
+											</p>
+											<p class="install-step__note install-step__note--sub">
+												Marketplace listing coming soon. Or open Extensions
+												(<kbd>Ctrl/Cmd+Shift+X</kbd>) and search
+												<strong>SQL SP Harness</strong>.
+											</p>
+										</div>
+										<div class="install-step">
+											<p class="install-step__note"><strong>Step 2.</strong> Verify the Python backend</p>
+											<div class="snippet-block">
+												<button type="button" class="snippet-block__copy">Copy</button>
+												<pre><code>pip install sql-sp-harness
+python3 -m sql_sp_harness version</code></pre>
+											</div>
+											<p class="install-step__note install-step__note--sub">
+												On first activation the extension auto-runs pip install when
+												<code>spDebug.autoInstallBackend</code> is enabled.
+											</p>
+										</div>
+										<div class="install-step">
+											<p class="install-step__note"><strong>Step 3.</strong> Open a .sql file and run Analyze or Generate</p>
+											<div class="snippet-block">
+												<button type="button" class="snippet-block__copy">Copy</button>
+												<pre><code>Right-click .sql → SQL SP Harness ▸ Analyze Procedure
+Right-click .sql → SQL SP Harness ▸ Generate Debug Script</code></pre>
+											</div>
+										</div>
+									</div>
+								</div>
+								<div
+									class="code-tabs__panel"
+									role="tabpanel"
+									id="panel-source"
+									aria-labelledby="tab-source"
+									data-tab-panel="source"
+									hidden
+								>
+									<div class="install-steps">
+										<div class="install-step">
+											<p class="install-step__note"><strong>Step 1.</strong> Clone and build the VSIX</p>
+											<div class="snippet-block">
+												<button type="button" class="snippet-block__copy">Copy</button>
+												<pre><code>git clone https://github.com/DeeprajDeveloper/vscode-sql-sp-harness.git
+cd vscode-sql-sp-harness
+npm install && npm run compile && npm run package</code></pre>
+											</div>
+										</div>
+										<div class="install-step">
+											<p class="install-step__note"><strong>Step 2.</strong> Install the extension</p>
+											<div class="snippet-block">
+												<button type="button" class="snippet-block__copy">Copy</button>
+												<pre><code>code --install-extension dist/sql-sp-harness.vsix</code></pre>
+											</div>
+										</div>
+										<div class="install-step">
+											<p class="install-step__note"><strong>Step 3.</strong> Verify the Python backend</p>
+											<div class="snippet-block">
+												<button type="button" class="snippet-block__copy">Copy</button>
+												<pre><code>pip install sql-sp-harness
+python3 -m sql_sp_harness version</code></pre>
+											</div>
+											<p class="install-step__note install-step__note--sub">
+												On first activation the extension auto-runs pip install when
+												<code>spDebug.autoInstallBackend</code> is enabled.
+											</p>
+										</div>
+										<div class="install-step">
+											<p class="install-step__note"><strong>Step 4.</strong> Open a .sql file and run Analyze or Generate</p>
+											<div class="snippet-block">
+												<button type="button" class="snippet-block__copy">Copy</button>
+												<pre><code>Right-click .sql → SQL SP Harness ▸ Analyze Procedure
+Right-click .sql → SQL SP Harness ▸ Generate Debug Script</code></pre>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</section>
+
+					<section id="settings">
+						<div class="container">
+							<h2>Settings</h2>
+							<p class="section-intro">
+								Grouped under <strong>SQL SP Harness</strong> in VS Code Settings.
+							</p>
+
+							<h3 style="margin-top: 0">SQL SP Harness</h3>
+							<div class="table-wrap">
+								<table>
+									<thead>
+										<tr>
+											<th>Setting</th>
+											<th>Default</th>
+											<th>Description</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td><code>spDebug.pythonPath</code></td>
+											<td><em>empty</em></td>
+											<td>Python executable (auto-detect if empty)</td>
+										</tr>
+										<tr>
+											<td><code>spDebug.pipPackage</code></td>
+											<td><code>sql-sp-harness</code></td>
+											<td>PyPI package to install</td>
+										</tr>
+										<tr>
+											<td><code>spDebug.autoInstallBackend</code></td>
+											<td><code>true</code></td>
+											<td>Run pip install on activation when missing</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+
+							<h3>SQL SP Harness › Generate</h3>
+							<div class="table-wrap">
+								<table>
+									<thead>
+										<tr>
+											<th>Setting</th>
+											<th>Default</th>
+											<th>Description</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td><code>spDebug.traceStyle</code></td>
+											<td><code>print</code></td>
+											<td><code>print</code> or <code>raiserror</code> for variable traces</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+
+							<h3>SQL SP Harness › Logging</h3>
+							<div class="table-wrap">
+								<table>
+									<thead>
+										<tr>
+											<th>Setting</th>
+											<th>Default</th>
+											<th>Description</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td><code>spDebug.logToOutput</code></td>
+											<td><code>true</code></td>
+											<td>Show step log in Output channel</td>
+										</tr>
+										<tr>
+											<td><code>spDebug.saveLogFile</code></td>
+											<td><code>false</code></td>
+											<td>Save <code>&lt;proc&gt;.log</code> beside source file</td>
+										</tr>
+										<tr>
+											<td><code>spDebug.quietWhenLogging</code></td>
+											<td><code>true</code></td>
+											<td>Pass <code>--quiet</code> on generate</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+
+							<div class="callout" style="margin-top: 1.5rem">
+								<strong>Step logs.</strong> With <code>spDebug.logToOutput</code> enabled, the
+								full backend audit log appears under <strong>--- Step log ---</strong> in the
+								<strong>SQL SP Harness</strong> output channel. See the
+								<a href="https://deeprajdeveloper.github.io/sql-sp-harness/">backend docs</a>
+								for CLI logging options.
+							</div>
+						</div>
+					</section>
+
+					<section id="development">
+						<div class="container">
+							<h2>Development</h2>
+							<div class="install-steps">
+								<div class="install-step">
+									<p class="install-step__note"><strong>Extension dev host</strong></p>
+									<div class="snippet-block">
+										<button type="button" class="snippet-block__copy">Copy</button>
+										<pre><code>git clone https://github.com/DeeprajDeveloper/vscode-sql-sp-harness.git
+cd vscode-sql-sp-harness
+pip install sql-sp-harness
+npm install && npm run compile</code></pre>
+									</div>
+									<p class="install-step__note install-step__note--sub">
+										Press <strong>F5</strong> to launch an Extension Development Host.
+									</p>
+								</div>
+								<div class="install-step">
+									<p class="install-step__note"><strong>Documentation site</strong></p>
+									<div class="snippet-block">
+										<button type="button" class="snippet-block__copy">Copy</button>
+										<pre><code>npm run docs:build    # compile SCSS
+npm run docs:pdf      # generate TECHNICAL_DESIGN.pdf
+npm run docs:serve    # local preview on :8080</code></pre>
+									</div>
+								</div>
+							</div>
+							<p class="section-intro" style="margin-top: 1.25rem">
+								Architecture and component breakdown:
+								<a href="technical-design.html">Technical design (HTML)</a> ·
+								<a href="TECHNICAL_DESIGN.pdf">PDF</a>
+							</p>
+						</div>
+					</section>
+				</main>
+			</div>
+		</div>
+		<script src="theme.js"></script>
+	</body>
+</html>

@@ -1,0 +1,58 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+section {
+  padding: $space-9xl 0;
+
+  h2 {
+    font-size: $font-size-3xl;
+    margin: 0 0 $space-3xl;
+    font-family: $font-heading;
+    font-weight: $font-weight-semibold;
+    color: $accent;
+  }
+
+  p.section-intro {
+    color: $muted;
+    margin: 0 0 $space-6xl;
+    max-width: $content-max-intro;
+  }
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax($card-min, 1fr));
+  gap: $space-3xl;
+}
+
+.card {
+  @include elevated-surface;
+  border-radius: $radius;
+  padding: $space-5xl;
+
+  h3 {
+    margin: 0 0 $space-md;
+    font-size: $font-size-md;
+    color: $accent;
+  }
+
+  p {
+    margin: 0;
+    color: $muted;
+    font-size: $font-size-base;
+  }
+}
+
+.callout {
+  border-left: $callout-border-width solid $warn;
+  background: $callout-bg;
+  padding: $space-2xl $space-3xl;
+  // border-radius: 0 $radius-sm $radius-sm 0;
+  margin: $space-3xl 0;
+  font-size: $font-size-nav;
+  // color: $muted;
+
+  strong {
+    color: $warn;
+  }
+}

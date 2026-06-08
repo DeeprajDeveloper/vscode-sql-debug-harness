@@ -12,11 +12,26 @@ import {
   SpDebugBackend,
 } from "./spDebugBackend";
 import { showAnalyzeReportPanel } from "./analyzeReportPanel";
+import {
+  BackendStatusBar,
+  refreshBackendStatus,
+  runStartupBackendSetup,
+} from "./backendSetup";
 import { SqlSourceContext } from "./sqlSource";
+import {
+  appendStepLogToOutput,
+  copyLogBesideSource,
+  stepLogPath,
+} from "./cliLog";
+import {
+  configureSettingsInteractive,
+  openExtensionSettings,
+} from "./configureSettings";
 
 const OUTPUT_CHANNEL = "SQL SP Harness";
 
 let outputChannel: vscode.OutputChannel | undefined;
+let backendStatusBar: BackendStatusBar | undefined;
 
 function getOutputChannel(): vscode.OutputChannel {
   if (!outputChannel) {
@@ -89,10 +104,13 @@ async function generateDebugScript(
     return;
   }
 
-  const { traceStyle } = getSpDebugSettings();
+  const { traceStyle, logToOutput, saveLogFile, quietWhenLogging } =
+    getSpDebugSettings();
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sql-sp-harness-"));
   const inputPath = path.join(tmpDir, "input.sql");
   const outputPath = path.join(tmpDir, "output_debug.sql");
+  const logPath = stepLogPath(tmpDir);
+  const useStepLog = logToOutput || saveLogFile;
 
   fs.writeFileSync(inputPath, resolved.source, "utf-8");
 
@@ -101,25 +119,40 @@ async function generateDebugScript(
   channel.appendLine(`[${resolved.label}] Backend: ${formatBackendLabel(backend)}`);
   channel.appendLine(`Running: ${backend.pythonPath} -m sql_sp_harness generate ...`);
 
-  const { stdout, stderr, code } = await runSpDebugCli(
-    backend,
-    [
-      "generate",
-      "-i",
-      inputPath,
-      "-o",
-      outputPath,
-      "--trace-style",
-      traceStyle,
-    ],
-    tmpDir
-  );
+  const cliArgs = [
+    "generate",
+    "-i",
+    inputPath,
+    "-o",
+    outputPath,
+    "--trace-style",
+    traceStyle,
+  ];
+  if (useStepLog) {
+    cliArgs.push("--log-file", logPath);
+    if (quietWhenLogging) {
+      cliArgs.push("--quiet");
+    }
+  }
+
+  const { stdout, stderr, code } = await runSpDebugCli(backend, cliArgs, tmpDir);
 
   if (stdout) {
     channel.appendLine(stdout.trim());
   }
   if (stderr) {
     channel.appendLine(stderr.trim());
+  }
+
+  if (useStepLog) {
+    if (logToOutput) {
+      if (!appendStepLogToOutput(channel, logPath, resolved.label)) {
+        channel.appendLine("(No step log was produced.)");
+      }
+    }
+    if (saveLogFile && resolved.sourceUri) {
+      copyLogBesideSource(logPath, resolved.sourceUri, resolved.baseName, channel);
+    }
   }
 
   if (code !== 0 && code !== 2) {
@@ -169,6 +202,9 @@ async function runAnalyze(
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sql-sp-harness-"));
   const inputPath = path.join(tmpDir, "input.sql");
+  const logPath = stepLogPath(tmpDir);
+  const { logToOutput, saveLogFile } = getSpDebugSettings();
+  const useStepLog = logToOutput || saveLogFile;
 
   fs.writeFileSync(inputPath, resolved.source, "utf-8");
 
@@ -177,14 +213,26 @@ async function runAnalyze(
   channel.appendLine(`[${resolved.label}] Backend: ${formatBackendLabel(backend)}`);
   channel.appendLine(`Running: ${backend.pythonPath} -m sql_sp_harness analyze ...`);
 
-  const { stdout, stderr, code } = await runSpDebugCli(
-    backend,
-    ["analyze", "-i", inputPath, "--plain"],
-    tmpDir
-  );
+  const cliArgs = ["analyze", "-i", inputPath, "--plain"];
+  if (useStepLog) {
+    cliArgs.push("--log-file", logPath);
+  }
+
+  const { stdout, stderr, code } = await runSpDebugCli(backend, cliArgs, tmpDir);
 
   if (stderr) {
     channel.appendLine(stderr.trim());
+  }
+
+  if (useStepLog) {
+    if (logToOutput) {
+      if (!appendStepLogToOutput(channel, logPath, resolved.label)) {
+        channel.appendLine("(No step log was produced.)");
+      }
+    }
+    if (saveLogFile && resolved.sourceUri) {
+      copyLogBesideSource(logPath, resolved.sourceUri, resolved.baseName, channel);
+    }
   }
 
   if (code !== 0) {
@@ -219,6 +267,9 @@ async function verifySetup(): Promise<void> {
   channel.appendLine(`spDebug.pythonPath: ${settings.pythonPath || "(auto)"}`);
   channel.appendLine(`spDebug.pipPackage: ${settings.pipPackage}`);
   channel.appendLine(`spDebug.traceStyle: ${settings.traceStyle}`);
+  channel.appendLine(`spDebug.logToOutput: ${settings.logToOutput}`);
+  channel.appendLine(`spDebug.saveLogFile: ${settings.saveLogFile}`);
+  channel.appendLine(`spDebug.quietWhenLogging: ${settings.quietWhenLogging}`);
   channel.appendLine("");
 
   const resolved = await resolveSpDebugBackend();
@@ -228,6 +279,9 @@ async function verifySetup(): Promise<void> {
     channel.appendLine(resolved.message);
     channel.appendLine("");
     channel.appendLine("Tried Python: " + resolved.pythonCandidates.join(", "));
+    if (backendStatusBar) {
+      await refreshBackendStatus(backendStatusBar);
+    }
     vscode.window.showErrorMessage(
       "SQL SP Harness: setup incomplete. See output channel.",
       "Copy pip install"
@@ -245,13 +299,24 @@ async function verifySetup(): Promise<void> {
   channel.appendLine("");
   channel.appendLine("You can generate debug scripts from any .sql file in your workspace.");
 
+  if (backendStatusBar) {
+    await refreshBackendStatus(backendStatusBar);
+  }
+
   vscode.window.showInformationMessage(
     `SQL SP Harness ready (${formatBackendLabel(resolved)}).`
   );
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(getOutputChannel());
+  const channel = getOutputChannel();
+  context.subscriptions.push(channel);
+  backendStatusBar = new BackendStatusBar(context);
+
+  void runStartupBackendSetup(context, backendStatusBar, (line) =>
+    channel.appendLine(line)
+  );
+
   context.subscriptions.push(
     vscode.commands.registerCommand("spDebug.generate", (uri?: vscode.Uri) =>
       generateDebugScript(uri)
@@ -264,7 +329,13 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("spDebug.analyze", (uri?: vscode.Uri) =>
       runAnalyze(context, uri)
     ),
-    vscode.commands.registerCommand("spDebug.verifySetup", () => verifySetup())
+    vscode.commands.registerCommand("spDebug.verifySetup", () => verifySetup()),
+    vscode.commands.registerCommand("spDebug.configure", () =>
+      configureSettingsInteractive()
+    ),
+    vscode.commands.registerCommand("spDebug.openSettings", () =>
+      openExtensionSettings()
+    )
   );
 }
 

@@ -1,0 +1,32 @@
+@use "variables" as *;
+
+code {
+  font-family: $font-mono;
+  font-size: 0.88em;
+  background: $code-bg;
+  padding: 0.12em 0.35em;
+  border-radius: $radius-code;
+  border: $border-width solid $border;
+}
+
+pre,
+.code {
+  font-family: $font-mono;
+  font-size: $font-size-xs;
+}
+
+pre {
+  background: $code-bg;
+  border: $border-width solid $border;
+  border-radius: $radius;
+  padding: $space-3xl $space-4xl;
+  overflow-x: auto;
+  margin: $space-xl 0 0;
+
+  code {
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-size: inherit;
+  }
+}
