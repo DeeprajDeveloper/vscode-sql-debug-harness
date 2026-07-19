@@ -1,63 +1,137 @@
 {
   "name": "sql-sp-harness",
-  "displayName": "SQL SP Harness",
-  "description": "Generate safe T-SQL debug harness scripts and analyze stored procedures from VS Code.",
+  "displayName": "SQL Debug Harness",
+  "description": "Generate safe T-SQL debug harness scripts and analyze stored procedures from VS Code — no Python required.",
   "repository": {
     "type": "git",
     "url": "https://github.com/DeeprajDeveloper/vscode-sql-sp-harness"
   },
   "license": "MIT",
-  "version": "0.1.0-beta.1",
+  "version": "0.0.1-beta.1",
   "publisher": "DeeprajAdhikary",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.85.0",
+    "node": ">=18"
   },
-  "icon": "images/extension-logo.png",
-  "categories": ["Other", "Programming Languages"],
+  "icon": "images/extension-logo-v1.png",
+  "categories": [
+    "Other",
+    "Programming Languages",
+    "Debugging",
+    "SQL",
+    "SQL Server",
+    "Stored Procedures",
+    "Debugging",
+    "Debug",
+    "Debug Harness",
+    "SQL Debug Harness"
+  ],
+  "keywords": [
+    "sql",
+    "tsql",
+    "sql-server",
+    "stored-procedure",
+    "debug-harness"
+  ],
   "activationEvents": [],
   "main": "./out/extension.js",
+  "bin": {
+    "sql-sp-harness": "./out/cli.js"
+  },
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sql-sp-harness",
+          "title": "SQL Debug Harness",
+          "icon": "images/activitybar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "sql-sp-harness": [
+        {
+          "id": "sqlSpHarness.sidebar",
+          "name": "Workbench",
+          "icon": "$(window)",
+          "contextualTitle": "SQL Debug Harness"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "sqlSpHarness.sidebar",
+        "contents": "Open the SQL Debug Harness workbench to analyze procedures and generate safe debug scripts.\n\n[Open Workbench](command:spDebug.openWorkbench)\n\n[Analyze Active SQL](command:spDebug.analyze)\n\n[Generate Debug Script](command:spDebug.generate)\n\n**Tip:** In the workbench, use **Select File…** to pick a workspace `.sql` file, or **Load Active** for the open editor."
+      }
+    ],
     "commands": [
       {
         "command": "spDebug.generate",
         "title": "Generate Debug Script",
-        "category": "SQL SP Harness",
+        "category": "SQL Debug Harness",
         "icon": "$(debug-alt)"
       },
       {
         "command": "spDebug.analyze",
         "title": "Analyze Procedure",
-        "category": "SQL SP Harness",
+        "category": "SQL Debug Harness",
         "icon": "$(list-flat)"
       },
       {
-        "command": "spDebug.verifySetup",
-        "title": "Verify Python Setup",
-        "category": "SQL SP Harness",
-        "icon": "$(check-all)"
+        "command": "spDebug.openWorkbench",
+        "title": "Open Workbench",
+        "category": "SQL Debug Harness",
+        "icon": "$(window)"
+      },
+      {
+        "command": "spDebug.openInWorkbench",
+        "title": "Open in Workbench",
+        "category": "SQL Debug Harness",
+        "icon": "$(window)"
       },
       {
         "command": "spDebug.configure",
         "title": "Configure Settings",
-        "category": "SQL SP Harness",
+        "category": "SQL Debug Harness",
         "icon": "$(settings-gear)"
       },
       {
         "command": "spDebug.openSettings",
         "title": "Open Extension Settings",
-        "category": "SQL SP Harness",
+        "category": "SQL Debug Harness",
         "icon": "$(settings)"
       }
     ],
     "submenus": [
       {
         "id": "spDebug.submenu",
-        "label": "SQL SP Harness",
+        "label": "SQL Debug Harness",
         "icon": "$(debug-alt)"
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "spDebug.openWorkbench",
+          "when": "view == sqlSpHarness.sidebar",
+          "group": "navigation@1"
+        },
+        {
+          "command": "spDebug.analyze",
+          "when": "view == sqlSpHarness.sidebar",
+          "group": "navigation@2"
+        },
+        {
+          "command": "spDebug.generate",
+          "when": "view == sqlSpHarness.sidebar",
+          "group": "navigation@3"
+        }
+      ],
       "spDebug.submenu": [
+        {
+          "command": "spDebug.openWorkbench",
+          "group": "1_run@0"
+        },
         {
           "command": "spDebug.generate",
           "group": "1_run@1"
@@ -67,19 +141,25 @@
           "group": "1_run@2"
         },
         {
-          "command": "spDebug.verifySetup",
+          "command": "spDebug.configure",
           "group": "2_setup@1"
         },
         {
-          "command": "spDebug.configure",
-          "group": "2_setup@2"
-        },
-        {
           "command": "spDebug.openSettings",
-          "group": "2_setup@3"
+          "group": "2_setup@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "spDebug.openWorkbench"
         }
       ],
       "explorer/context": [
+        {
+          "command": "spDebug.openInWorkbench",
+          "when": "resourceExtname == .sql",
+          "group": "navigation@9"
+        },
         {
           "submenu": "spDebug.submenu",
           "when": "resourceExtname == .sql",
@@ -87,6 +167,11 @@
         }
       ],
       "editor/context": [
+        {
+          "command": "spDebug.openInWorkbench",
+          "when": "resourceLangId == sql",
+          "group": "navigation@9"
+        },
         {
           "submenu": "spDebug.submenu",
           "when": "resourceLangId == sql",
@@ -103,36 +188,15 @@
     },
     "configuration": [
       {
-        "title": "SQL SP Harness",
+        "title": "SQL Debug Harness › Generate",
         "order": 0,
-        "properties": {
-          "spDebug.pythonPath": {
-            "type": "string",
-            "default": "",
-            "order": 1,
-            "markdownDescription": "Python executable for [sql-sp-harness](https://deeprajdeveloper.github.io/sql-sp-harness/). Leave empty to try `python3`, `python`, and `py` (Windows)."
-          },
-          "spDebug.pipPackage": {
-            "type": "string",
-            "default": "sql-sp-harness",
-            "order": 2,
-            "description": "PyPI package name installed automatically and shown in setup hints."
-          },
-          "spDebug.autoInstallBackend": {
-            "type": "boolean",
-            "default": true,
-            "order": 3,
-            "description": "On activation, if Python is found but sql-sp-harness is missing, run pip install automatically."
-          }
-        }
-      },
-      {
-        "title": "SQL SP Harness › Generate",
-        "order": 1,
         "properties": {
           "spDebug.traceStyle": {
             "type": "string",
-            "enum": ["raiserror", "print"],
+            "enum": [
+              "raiserror",
+              "print"
+            ],
             "enumDescriptions": [
               "RAISERROR … WITH NOWAIT (Messages tab in SSMS)",
               "PRINT traces (default)"
@@ -144,14 +208,14 @@
         }
       },
       {
-        "title": "SQL SP Harness › Logging",
-        "order": 2,
+        "title": "SQL Debug Harness › Logging",
+        "order": 1,
         "properties": {
           "spDebug.logToOutput": {
             "type": "boolean",
             "default": true,
             "order": 1,
-            "markdownDescription": "Write the sql-sp-harness step log (`--log-file`) to the **SQL SP Harness** output channel after analyze/generate."
+            "markdownDescription": "Write the step-by-step transform/analyze log to the **SQL SP Harness** output channel."
           },
           "spDebug.saveLogFile": {
             "type": "boolean",
@@ -163,27 +227,36 @@
             "type": "boolean",
             "default": true,
             "order": 3,
-            "description": "Pass --quiet to generate when step logging is enabled, so progress goes to the log/output channel instead of stderr."
+            "description": "When step logging is enabled, avoid duplicating progress lines in the Output channel."
           }
         }
       }
     ]
   },
   "scripts": {
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "compile": "node esbuild.js",
+    "check": "tsc -p ./ --noEmit",
+    "watch": "node esbuild.js --watch",
+    "test": "jest",
     "vscode:prepublish": "npm run compile",
-    "package": "mkdir -p dist && vsce package --out dist/sql-sp-harness.vsix --allow-missing-repository",
+    "package": "npm run compile && mkdir -p dist && vsce package --out dist/sql-sp-harness.vsix --allow-missing-repository",
     "docs:build": "bash scripts/build-docs.sh",
     "docs:pdf": "bash scripts/build-docs.sh --pdf",
     "docs:serve": "npm run docs:build && npx --yes serve docs -p 8080"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.10.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "2.32.0",
+    "esbuild": "^0.28.1",
+    "jest": "^30.4.2",
     "md-to-pdf": "^5.2.4",
     "sass": "^1.77.0",
+    "ts-jest": "^29.4.11",
     "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "node-sql-parser": "^5.4.0"
   }
 }

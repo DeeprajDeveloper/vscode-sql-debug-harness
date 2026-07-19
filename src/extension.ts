@@ -1,37 +1,22 @@
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
 import * as vscode from "vscode";
+import { analyze, generate } from "./engine";
 import {
-  formatBackendLabel,
-  getSpDebugSettings,
-  isSetupFailure,
-  promptSetupFailure,
-  resolveSpDebugBackend,
-  runSpDebugCli,
-  SpDebugBackend,
-} from "./spDebugBackend";
-import { showAnalyzeReportPanel } from "./analyzeReportPanel";
-import {
-  BackendStatusBar,
-  refreshBackendStatus,
-  runStartupBackendSetup,
-} from "./backendSetup";
+  showHarnessWorkbench,
+  openEmptyWorkbench,
+  writeStepLogBesideSource,
+  loadSqlFileIntoWorkbench,
+} from "./harnessWorkbench";
 import { SqlSourceContext } from "./sqlSource";
-import {
-  appendStepLogToOutput,
-  copyLogBesideSource,
-  stepLogPath,
-} from "./cliLog";
+import { getSpDebugSettings } from "./settings";
 import {
   configureSettingsInteractive,
   openExtensionSettings,
 } from "./configureSettings";
+import { registerHarnessSidebar } from "./harnessSidebar";
 
 const OUTPUT_CHANNEL = "SQL SP Harness";
 
 let outputChannel: vscode.OutputChannel | undefined;
-let backendStatusBar: BackendStatusBar | undefined;
 
 function getOutputChannel(): vscode.OutputChannel {
   if (!outputChannel) {
@@ -40,30 +25,37 @@ function getOutputChannel(): vscode.OutputChannel {
   return outputChannel;
 }
 
-async function requireBackend(): Promise<SpDebugBackend | null> {
-  const resolved = await resolveSpDebugBackend();
-  if (isSetupFailure(resolved)) {
-    getOutputChannel().appendLine(resolved.message);
-    await promptSetupFailure(resolved);
-    return null;
+function appendStepLog(
+  channel: vscode.OutputChannel,
+  label: string,
+  stepLog: string[]
+): void {
+  if (!stepLog.length) {
+    channel.appendLine("(No step log was produced.)");
+    return;
   }
-  return resolved;
+  channel.appendLine("");
+  channel.appendLine(`--- Step log (${label}) ---`);
+  for (const line of stepLog) {
+    channel.appendLine(line);
+  }
+  channel.appendLine("--- End step log ---");
 }
 
 async function resolveSqlSource(
   uri?: vscode.Uri
-): Promise<{ source: string; baseName: string; label: string; sourceUri?: vscode.Uri } | null> {
+): Promise<SqlSourceContext | null> {
   if (uri) {
     const doc = await vscode.workspace.openTextDocument(uri);
-    if (path.extname(uri.fsPath).toLowerCase() !== ".sql") {
+    if (pathExt(uri.fsPath).toLowerCase() !== ".sql") {
       vscode.window.showWarningMessage("SQL SP Harness: file is not a .sql file.");
       return null;
     }
-    const baseName = path.basename(uri.fsPath, path.extname(uri.fsPath));
+    const baseName = basename(uri.fsPath, pathExt(uri.fsPath));
     return {
       source: doc.getText(),
       baseName,
-      label: path.basename(uri.fsPath),
+      label: basename(uri.fsPath),
       sourceUri: uri,
     };
   }
@@ -83,22 +75,57 @@ async function resolveSqlSource(
   const source = selection.isEmpty ? doc.getText() : doc.getText(selection);
   const filePath = doc.uri.fsPath;
   const baseName = filePath
-    ? path.basename(filePath, path.extname(filePath))
+    ? basename(filePath, pathExt(filePath))
     : "script";
-  const label = filePath ? path.basename(filePath) : "untitled.sql";
+  const label = filePath ? basename(filePath) : "untitled.sql";
   const sourceUri = filePath ? doc.uri : undefined;
   return { source, baseName, label, sourceUri };
 }
 
-async function generateDebugScript(
-  uri?: vscode.Uri,
-  sqlSource?: SqlSourceContext
+function pathExt(p: string): string {
+  const i = p.lastIndexOf(".");
+  return i >= 0 ? p.slice(i) : "";
+}
+
+function basename(p: string, ext?: string): string {
+  const name = p.replace(/^.*[/\\]/, "");
+  if (ext && name.toLowerCase().endsWith(ext.toLowerCase())) {
+    return name.slice(0, -ext.length);
+  }
+  return name;
+}
+
+async function openWorkbench(
+  context: vscode.ExtensionContext,
+  uri?: vscode.Uri
 ): Promise<void> {
-  const backend = await requireBackend();
-  if (!backend) {
+  if (uri) {
+    const resolved = await resolveSqlSource(uri);
+    if (!resolved) {
+      return;
+    }
+    showHarnessWorkbench(context, resolved);
     return;
   }
 
+  // Prefer active SQL editor/selection when available; otherwise open empty workbench.
+  const editor = vscode.window.activeTextEditor;
+  if (editor && editor.document.languageId === "sql") {
+    const resolved = await resolveSqlSource();
+    if (resolved) {
+      showHarnessWorkbench(context, resolved);
+      return;
+    }
+  }
+
+  openEmptyWorkbench(context);
+}
+
+async function generateDebugScript(
+  context: vscode.ExtensionContext,
+  uri?: vscode.Uri,
+  sqlSource?: SqlSourceContext
+): Promise<void> {
   const resolved = sqlSource ?? (await resolveSqlSource(uri));
   if (!resolved) {
     return;
@@ -106,82 +133,47 @@ async function generateDebugScript(
 
   const { traceStyle, logToOutput, saveLogFile, quietWhenLogging } =
     getSpDebugSettings();
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sql-sp-harness-"));
-  const inputPath = path.join(tmpDir, "input.sql");
-  const outputPath = path.join(tmpDir, "output_debug.sql");
-  const logPath = stepLogPath(tmpDir);
-  const useStepLog = logToOutput || saveLogFile;
-
-  fs.writeFileSync(inputPath, resolved.source, "utf-8");
-
   const channel = getOutputChannel();
-  channel.show(true);
-  channel.appendLine(`[${resolved.label}] Backend: ${formatBackendLabel(backend)}`);
-  channel.appendLine(`Running: ${backend.pythonPath} -m sql_sp_harness generate ...`);
+  if (logToOutput || !quietWhenLogging) {
+    channel.show(true);
+    channel.appendLine(`[${resolved.label}] Generating debug script...`);
+  }
 
-  const cliArgs = [
-    "generate",
-    "-i",
-    inputPath,
-    "-o",
-    outputPath,
-    "--trace-style",
+  const result = generate(resolved.source, {
     traceStyle,
-  ];
-  if (useStepLog) {
-    cliArgs.push("--log-file", logPath);
-    if (quietWhenLogging) {
-      cliArgs.push("--quiet");
-    }
-  }
-
-  const { stdout, stderr, code } = await runSpDebugCli(backend, cliArgs, tmpDir);
-
-  if (stdout) {
-    channel.appendLine(stdout.trim());
-  }
-  if (stderr) {
-    channel.appendLine(stderr.trim());
-  }
-
-  if (useStepLog) {
-    if (logToOutput) {
-      if (!appendStepLogToOutput(channel, logPath, resolved.label)) {
-        channel.appendLine("(No step log was produced.)");
+    onProgress: (msg) => {
+      if (!quietWhenLogging) {
+        channel.appendLine(msg);
       }
-    }
-    if (saveLogFile && resolved.sourceUri) {
-      copyLogBesideSource(logPath, resolved.sourceUri, resolved.baseName, channel);
-    }
-  }
-
-  if (code !== 0 && code !== 2) {
-    vscode.window.showErrorMessage(
-      `SQL SP Harness failed (exit ${code}). See ${OUTPUT_CHANNEL} output.`
-    );
-    return;
-  }
-
-  if (!fs.existsSync(outputPath)) {
-    vscode.window.showErrorMessage("SQL SP Harness: no output file produced.");
-    return;
-  }
-
-  const outText = fs.readFileSync(outputPath, "utf-8");
-  const outDoc = await vscode.workspace.openTextDocument({
-    content: outText,
-    language: "sql",
+    },
   });
-  await vscode.window.showTextDocument(outDoc, { preview: false });
-  channel.appendLine(`Opened debug script (${resolved.baseName}_debug).`);
 
-  if (code === 2) {
+  if (logToOutput) {
+    appendStepLog(channel, resolved.label, result.stepLog);
+  }
+  if (saveLogFile && resolved.sourceUri) {
+    const logPath = writeStepLogBesideSource(
+      result.stepLog,
+      resolved.sourceUri,
+      resolved.baseName
+    );
+    channel.appendLine(`Saved step log: ${logPath}`);
+  }
+
+  showHarnessWorkbench(context, resolved, {
+    debugSql: result.sql,
+    stepLog: result.stepLog,
+  });
+
+  const hasWarnings =
+    result.stats.warnings.length > 0 || result.parseErrors.length > 0;
+  if (hasWarnings) {
     vscode.window.showWarningMessage(
-      "SQL SP Harness: completed with warnings — review banner in output."
+      "SQL SP Harness: completed with warnings — review the workbench Analysis / Active log."
     );
   } else {
     vscode.window.showInformationMessage(
-      `SQL SP Harness: debug script generated for ${resolved.label}.`
+      `SQL SP Harness: debug script ready for ${resolved.label}.`
     );
   }
 }
@@ -190,146 +182,86 @@ async function runAnalyze(
   context: vscode.ExtensionContext,
   uri?: vscode.Uri
 ): Promise<void> {
-  const backend = await requireBackend();
-  if (!backend) {
-    return;
-  }
-
   const resolved = await resolveSqlSource(uri);
   if (!resolved) {
     return;
   }
 
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "sql-sp-harness-"));
-  const inputPath = path.join(tmpDir, "input.sql");
-  const logPath = stepLogPath(tmpDir);
   const { logToOutput, saveLogFile } = getSpDebugSettings();
-  const useStepLog = logToOutput || saveLogFile;
-
-  fs.writeFileSync(inputPath, resolved.source, "utf-8");
-
   const channel = getOutputChannel();
   channel.show(true);
-  channel.appendLine(`[${resolved.label}] Backend: ${formatBackendLabel(backend)}`);
-  channel.appendLine(`Running: ${backend.pythonPath} -m sql_sp_harness analyze ...`);
+  channel.appendLine(`[${resolved.label}] Analyzing...`);
 
-  const cliArgs = ["analyze", "-i", inputPath, "--plain"];
-  if (useStepLog) {
-    cliArgs.push("--log-file", logPath);
+  const report = analyze(resolved.source);
+
+  if (logToOutput) {
+    appendStepLog(channel, resolved.label, report.stepLog);
   }
-
-  const { stdout, stderr, code } = await runSpDebugCli(backend, cliArgs, tmpDir);
-
-  if (stderr) {
-    channel.appendLine(stderr.trim());
-  }
-
-  if (useStepLog) {
-    if (logToOutput) {
-      if (!appendStepLogToOutput(channel, logPath, resolved.label)) {
-        channel.appendLine("(No step log was produced.)");
-      }
-    }
-    if (saveLogFile && resolved.sourceUri) {
-      copyLogBesideSource(logPath, resolved.sourceUri, resolved.baseName, channel);
-    }
-  }
-
-  if (code !== 0) {
-    if (stdout) {
-      channel.appendLine(stdout.trim());
-    }
-    vscode.window.showErrorMessage(
-      `SQL SP Harness analyze failed (exit ${code}). See ${OUTPUT_CHANNEL} output.`
+  if (saveLogFile && resolved.sourceUri) {
+    const logPath = writeStepLogBesideSource(
+      report.stepLog,
+      resolved.sourceUri,
+      resolved.baseName
     );
-    return;
+    channel.appendLine(`Saved step log: ${logPath}`);
   }
 
-  const report = stdout.trim();
-  channel.appendLine(report);
+  channel.appendLine(report.plainText);
 
-  showAnalyzeReportPanel(context, resolved.label, report, {
-    source: resolved.source,
-    baseName: resolved.baseName,
-    label: resolved.label,
-    sourceUri: resolved.sourceUri,
+  showHarnessWorkbench(context, resolved, {
+    report,
+    stepLog: report.stepLog,
   });
-}
 
-async function verifySetup(): Promise<void> {
-  const channel = getOutputChannel();
-  channel.show(true);
-  channel.clear();
-  channel.appendLine("SQL SP Harness — setup verification");
-  channel.appendLine("");
-
-  const settings = getSpDebugSettings();
-  channel.appendLine(`spDebug.pythonPath: ${settings.pythonPath || "(auto)"}`);
-  channel.appendLine(`spDebug.pipPackage: ${settings.pipPackage}`);
-  channel.appendLine(`spDebug.traceStyle: ${settings.traceStyle}`);
-  channel.appendLine(`spDebug.logToOutput: ${settings.logToOutput}`);
-  channel.appendLine(`spDebug.saveLogFile: ${settings.saveLogFile}`);
-  channel.appendLine(`spDebug.quietWhenLogging: ${settings.quietWhenLogging}`);
-  channel.appendLine("");
-
-  const resolved = await resolveSpDebugBackend();
-  if (isSetupFailure(resolved)) {
-    channel.appendLine("Status: NOT READY");
-    channel.appendLine("");
-    channel.appendLine(resolved.message);
-    channel.appendLine("");
-    channel.appendLine("Tried Python: " + resolved.pythonCandidates.join(", "));
-    if (backendStatusBar) {
-      await refreshBackendStatus(backendStatusBar);
-    }
-    vscode.window.showErrorMessage(
-      "SQL SP Harness: setup incomplete. See output channel.",
-      "Copy pip install"
-    ).then((choice) => {
-      if (choice === "Copy pip install") {
-        const cmd = `${resolved.pythonCandidates[0] ?? "python3"} -m pip install ${resolved.pipPackage}`;
-        void vscode.env.clipboard.writeText(cmd);
-      }
-    });
-    return;
-  }
-
-  channel.appendLine("Status: OK");
-  channel.appendLine(`Backend: ${formatBackendLabel(resolved)}`);
-  channel.appendLine("");
-  channel.appendLine("You can generate debug scripts from any .sql file in your workspace.");
-
-  if (backendStatusBar) {
-    await refreshBackendStatus(backendStatusBar);
-  }
-
-  vscode.window.showInformationMessage(
-    `SQL SP Harness ready (${formatBackendLabel(resolved)}).`
+  const realWarnings = report.warnings.filter(
+    (w) => w.type !== "—" && w.message !== "None"
   );
+  if (realWarnings.length > 0) {
+    vscode.window.showWarningMessage(
+      `SQL SP Harness: ${realWarnings.length} warning(s) — see workbench Analysis › Warnings.`
+    );
+  }
 }
 
 export function activate(context: vscode.ExtensionContext): void {
   const channel = getOutputChannel();
   context.subscriptions.push(channel);
-  backendStatusBar = new BackendStatusBar(context);
-
-  void runStartupBackendSetup(context, backendStatusBar, (line) =>
-    channel.appendLine(line)
+  channel.appendLine(
+    "SQL SP Harness ready (in-process TypeScript engine — no Python required)."
   );
+
+  registerHarnessSidebar(context);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("spDebug.generate", (uri?: vscode.Uri) =>
-      generateDebugScript(uri)
+      generateDebugScript(context, uri)
     ),
     vscode.commands.registerCommand(
       "spDebug.generateAnalyzed",
       (sqlSource: SqlSourceContext) =>
-        generateDebugScript(sqlSource.sourceUri, sqlSource)
+        generateDebugScript(context, sqlSource.sourceUri, sqlSource)
     ),
     vscode.commands.registerCommand("spDebug.analyze", (uri?: vscode.Uri) =>
       runAnalyze(context, uri)
     ),
-    vscode.commands.registerCommand("spDebug.verifySetup", () => verifySetup()),
+    vscode.commands.registerCommand("spDebug.openWorkbench", (uri?: vscode.Uri) =>
+      openWorkbench(context, uri)
+    ),
+    vscode.commands.registerCommand(
+      "spDebug.openInWorkbench",
+      async (uri?: vscode.Uri) => {
+        const target =
+          uri ??
+          vscode.window.activeTextEditor?.document.uri;
+        if (!target || pathExt(target.fsPath).toLowerCase() !== ".sql") {
+          vscode.window.showWarningMessage(
+            "SQL SP Harness: select a .sql file to open in the workbench."
+          );
+          return;
+        }
+        await loadSqlFileIntoWorkbench(context, target);
+      }
+    ),
     vscode.commands.registerCommand("spDebug.configure", () =>
       configureSettingsInteractive()
     ),

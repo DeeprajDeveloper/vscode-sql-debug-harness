@@ -1,0 +1,8 @@
+CREATE PROCEDURE dbo.usp_WithOutput
+    @Id INT
+AS
+BEGIN
+    INSERT INTO dbo.T (Id)
+    OUTPUT INSERTED.Id
+    VALUES (@Id);
+END
