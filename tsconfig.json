@@ -5,10 +5,13 @@
     "outDir": "out",
     "rootDir": "src",
     "lib": ["ES2022"],
+    "types": ["node", "jest"],
     "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/engine/__tests__/**"]
 }

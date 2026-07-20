@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
-import { getSpDebugSettings } from "./spDebugBackend";
+import { getSpDebugSettings } from "./settings";
 
 const CONFIG_SECTION = "spDebug";
-const SETTINGS_FILTER = "@ext:deeprajadhikary.sql-sp-harness";
+const SETTINGS_FILTER = "@ext:deeprajadhikary.sql-debug-harness";
 
 type SettingKind = "string" | "boolean" | "enum";
 
@@ -21,31 +21,6 @@ const SETTING_DEFS: SettingDef[] = [
     label: "Open SQL SP Harness in Settings UI",
     detail: "Browse all options in the Settings editor",
     kind: "string",
-  },
-  {
-    key: "__divider_backend__",
-    label: "— Backend —",
-    detail: "",
-    kind: "string",
-    isDivider: true,
-  },
-  {
-    key: "pythonPath",
-    label: "Python executable",
-    detail: "Path to python3, python, or py. Empty = auto-detect.",
-    kind: "string",
-  },
-  {
-    key: "pipPackage",
-    label: "PyPI package name",
-    detail: "Package installed on startup (default: sql-sp-harness)",
-    kind: "string",
-  },
-  {
-    key: "autoInstallBackend",
-    label: "Auto-install backend on activation",
-    detail: "Run pip install when Python is found but package is missing",
-    kind: "boolean",
   },
   {
     key: "__divider_generate__",
@@ -71,7 +46,7 @@ const SETTING_DEFS: SettingDef[] = [
   {
     key: "logToOutput",
     label: "Show step log in Output channel",
-    detail: "Print --log-file audit trail after analyze/generate",
+    detail: "Print transform/analyze audit trail after analyze/generate",
     kind: "boolean",
   },
   {
@@ -82,8 +57,8 @@ const SETTING_DEFS: SettingDef[] = [
   },
   {
     key: "quietWhenLogging",
-    label: "Quiet stderr when logging (generate)",
-    detail: "Avoid duplicating progress on stderr when log is enabled",
+    label: "Quiet progress when logging (generate)",
+    detail: "Avoid duplicating progress lines when step log is enabled",
     kind: "boolean",
   },
 ];
@@ -114,23 +89,6 @@ export async function openExtensionSettings(): Promise<void> {
   await vscode.commands.executeCommand(
     "workbench.action.openSettings",
     SETTINGS_FILTER
-  );
-}
-
-async function promptString(key: string, label: string): Promise<void> {
-  const current = config().get<string>(key, "");
-  const value = await vscode.window.showInputBox({
-    title: `SQL SP Harness: ${label}`,
-    value: current,
-    placeHolder: key === "pythonPath" ? "e.g. /usr/bin/python3 or leave empty" : undefined,
-    prompt: "Leave empty to use the default.",
-  });
-  if (value === undefined) {
-    return;
-  }
-  await config().update(key, value.trim(), vscode.ConfigurationTarget.Global);
-  vscode.window.showInformationMessage(
-    `SQL SP Harness: ${label} updated.`
   );
 }
 
@@ -187,9 +145,6 @@ async function configureSingleSetting(def: SettingDef): Promise<void> {
   }
 
   switch (def.kind) {
-    case "string":
-      await promptString(def.key, def.label);
-      break;
     case "boolean":
       await promptBoolean(def.key, def.label);
       break;
@@ -200,7 +155,6 @@ async function configureSingleSetting(def: SettingDef): Promise<void> {
 }
 
 export async function configureSettingsInteractive(): Promise<void> {
-  // Surface current values in the palette (also confirms settings are registered).
   getSpDebugSettings();
 
   while (true) {

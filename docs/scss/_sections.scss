@@ -1,58 +1,112 @@
 @use "variables" as *;
-@use "mixins" as *;
-
-section {
-  padding: $space-9xl 0;
-
-  h2 {
-    font-size: $font-size-3xl;
-    margin: 0 0 $space-3xl;
-    font-family: $font-heading;
-    font-weight: $font-weight-semibold;
-    color: $accent;
-  }
-
-  p.section-intro {
-    color: $muted;
-    margin: 0 0 $space-6xl;
-    max-width: $content-max-intro;
-  }
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax($card-min, 1fr));
-  gap: $space-3xl;
-}
-
-.card {
-  @include elevated-surface;
-  border-radius: $radius;
-  padding: $space-5xl;
-
-  h3 {
-    margin: 0 0 $space-md;
-    font-size: $font-size-md;
-    color: $accent;
-  }
-
-  p {
-    margin: 0;
-    color: $muted;
-    font-size: $font-size-base;
-  }
-}
 
 .callout {
-  border-left: $callout-border-width solid $warn;
+  border: $border-width solid $border;
+  border-left: $callout-border-width solid $risk;
   background: $callout-bg;
-  padding: $space-2xl $space-3xl;
-  // border-radius: 0 $radius-sm $radius-sm 0;
-  margin: $space-3xl 0;
-  font-size: $font-size-nav;
-  // color: $muted;
+  border-radius: $radius;
+  padding: $space-4xl $space-5xl;
+  margin: 0 0 $space-6xl;
+}
 
-  strong {
-    color: $warn;
+.callout-safe {
+  border-left-color: $safe;
+  background: $callout-safe-bg;
+}
+
+.callout-title {
+  font-family: $font-body;
+  font-size: $font-size-base;
+  letter-spacing: $letter-spacing-label;
+  text-transform: uppercase;
+  color: $risk-dim;
+  font-weight: $font-weight-semibold;
+  margin: 0 0 $space-md;
+}
+
+.callout-safe .callout-title {
+  color: $safe;
+}
+
+.callout p {
+  margin: $space-md 0;
+}
+
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  border: $border-width solid $border;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  margin: 0 0 $space-6xl;
+}
+
+.pipeline-step {
+  display: flex;
+  gap: $space-4xl;
+  padding: $space-4xl $space-5xl;
+  background: $surface-raised;
+
+  + .pipeline-step {
+    border-top: $border-width solid $border-soft;
   }
+}
+
+.pipeline-num {
+  font-family: $font-mono;
+  font-size: $font-size-nav;
+  color: $pipeline-num-fg;
+  background: $text-faint;
+  width: $pipeline-num-size;
+  height: $pipeline-num-size;
+  border-radius: $radius-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: $space-2xs;
+}
+
+.pipeline-step-title {
+  font-family: $font-mono;
+  font-size: $font-size-body;
+  font-weight: $font-weight-semibold;
+  margin: 0 0 $space-sm;
+}
+
+.pipeline-step p {
+  margin: 0;
+  font-size: $font-size-base;
+  color: $muted;
+}
+
+.module-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $space-xl;
+  margin: 0 0 $space-6xl;
+
+  @media (max-width: $bp-sidebar) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.module-card {
+  border: $border-width solid $border;
+  border-radius: $radius-md;
+  padding: $space-3xl $space-4xl;
+  background: $surface-raised;
+}
+
+.module-name {
+  font-family: $font-mono;
+  font-size: $font-size-label;
+  color: $safe;
+  margin: 0 0 $space-md;
+}
+
+.module-desc {
+  font-size: $font-size-label;
+  color: $muted;
+  margin: 0;
 }

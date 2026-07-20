@@ -9,10 +9,10 @@
 @mixin interactive-gradient($gradient, $gradient-hover) {
   background: $gradient;
   transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    color 0.15s ease;
+    background $transition-medium,
+    border-color $transition-medium,
+    box-shadow $transition-medium,
+    color $transition-fast;
 
   &:hover {
     background: $gradient-hover;

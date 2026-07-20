@@ -20,8 +20,8 @@ module.exports = {
   `,
   body_class: "markdown-body",
   pdf_options: {
-    format: "A4",
-    margin: { top: "18mm", right: "16mm", bottom: "18mm", left: "16mm" },
+    format: "A3",
+    margin: { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" },
     printBackground: true,
   },
   launch_options: {

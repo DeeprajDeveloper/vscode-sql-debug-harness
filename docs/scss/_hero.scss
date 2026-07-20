@@ -1,60 +1,110 @@
 @use "variables" as *;
 
-.hero {
-  padding: $space-10xl 0 $space-9xl;
-  text-align: center;
+.doc-banner {
+  margin: 0 0 $space-6xl;
+  border: $border-width solid $border;
+  border-radius: $radius-md;
+  overflow: hidden;
+  background: $banner-matte;
+  line-height: 0;
 
   img {
+    display: block;
     width: 100%;
     height: auto;
-    margin-bottom: $space-6xl;
-  }
-
-  .lead {
-    color: $muted;
-    font-size: $font-size-md;
-    max-width: $content-max-lead;
-    margin: 0 auto $space-7xl;
   }
 }
 
-.hero-title {
-  font-size: clamp($hero-title-min, $hero-title-fluid, $hero-title-max);
-  font-family: $font-heading;
-  margin: 0 0 $space-3xl;
-  font-weight: $font-weight-bold;
-  line-height: $line-height-heading;
-}
-
-.hero-subtitle {
-  font-size: $font-size-md;
-  margin: 0 0 $space-6xl;
-  font-weight: $font-weight-normal;
-  line-height: $line-height-subtitle;
-  color: $muted;
-}
-
-.badges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: $space-md;
-  margin-bottom: $space-7xl;
-}
-
-.badge {
-  display: inline-block;
-  padding: $space-xs $space-lg;
-  border-radius: $radius-pill;
-  font-size: $font-size-2xs;
-  background: $surface;
+.doc-preview {
+  margin: $space-6xl 0 0;
   border: $border-width solid $border;
-  color: $muted;
+  border-radius: $radius-md;
+  overflow: hidden;
+  background: $surface-raised;
 }
 
-.cta-row {
+.doc-preview__video {
+  display: block;
+  width: 100%;
+  height: auto;
+  // max-height: $preview-video-max-height;
+  background: $ink;
+}
+
+.doc-preview__caption {
+  font-family: $font-mono;
+  font-size: $font-size-sm;
+  color: $text-faint;
+  padding: $space-3xl $space-4xl;
+  border-top: $border-width solid $border-soft;
+  margin: 0;
+}
+
+.demo {
+  border: $border-width solid $border;
+  border-radius: $radius-code;
+  background: $surface-raised;
+  overflow: hidden;
+  margin: 0 0 $space-13xl;
+  font-weight: $font-weight-semibold;
+}
+
+.demo-tabs {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: $space-xl;
+  border-bottom: $border-width solid $border;
+}
+
+.demo-tab {
+  font-family: $font-body;
+  padding: $space-2xl $space-4xl;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $text-faint;
+  border-bottom: $border-width-accent solid transparent;
+  display: flex;
+  align-items: center;
+  gap: $space-md;
+  font-weight: $font-weight-medium;
+
+  .demo-tab__icon {
+    width: $nav-icon-size;
+    height: $nav-icon-size;
+    flex-shrink: 0;
+    color: inherit;
+  }
+
+  &[data-state="original"].is-active {
+    color: $risk;
+    border-bottom-color: $risk;
+  }
+
+  &[data-state="debug"].is-active {
+    color: $safe;
+    border-bottom-color: $safe;
+  }
+
+  &:hover {
+    color: $text;
+  }
+}
+
+.demo-body {
+  padding: $space-5xl $space-6xl;
+  position: relative;
+}
+
+.demo-footer {
+  font-family: $font-mono;
+  font-size: $font-size-sm;
+  color: $text-faint;
+  padding: 0 $space-6xl $space-4xl;
+
+  .safe-tag {
+    color: $safe;
+  }
+
+  .risk-tag {
+    color: $risk;
+  }
 }

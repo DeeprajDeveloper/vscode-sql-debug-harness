@@ -1,32 +1,81 @@
 @use "variables" as *;
 
-code {
-  font-family: $font-mono;
-  font-size: 0.88em;
-  background: $code-bg;
-  padding: 0.12em 0.35em;
+code.inline {
+  background: $surface-raised;
+  border: $border-width solid $border-soft;
+  padding: $space-2xs $space-md;
   border-radius: $radius-code;
-  border: $border-width solid $border;
+  font-size: $font-size-md;
+  color: $text;
+  font-weight: $font-weight-semibold;
+  font-family: $font-mono;
 }
 
-pre,
-.code {
+.demo-code {
+  font-family: $font-mono;
+  font-size: $font-size-body;
+  line-height: $line-height-code-demo;
+  white-space: pre;
+  overflow-x: auto;
+  margin: 0;
+  color: $text;
+
+  .kw {
+    color: $kw;
+  }
+
+  .risk-tok {
+    color: $risk;
+  }
+
+  .safe-tok {
+    color: $safe;
+  }
+
+  .str {
+    color: $str;
+  }
+
+  .com {
+    color: $text-faint;
+    font-style: italic;
+  }
+}
+
+.snippet-block {
+  position: relative;
+  border: $border-width solid $border;
+  border-radius: $radius-md;
+  background: $surface-raised;
+  margin: 0 0 $space-4xl;
+  overflow: hidden;
+
+  pre {
+    margin: 0;
+    padding: $space-3xl $space-4xl;
+    overflow-x: auto;
+    font-family: $font-mono;
+    font-size: $font-size-label;
+    line-height: $line-height-code;
+    color: $text;
+  }
+}
+
+.snippet-block__copy {
+  position: absolute;
+  top: $space-lg;
+  right: $space-lg;
   font-family: $font-mono;
   font-size: $font-size-xs;
-}
-
-pre {
-  background: $code-bg;
+  color: $muted;
+  background: $surface;
   border: $border-width solid $border;
-  border-radius: $radius;
-  padding: $space-3xl $space-4xl;
-  overflow-x: auto;
-  margin: $space-xl 0 0;
+  border-radius: $radius-sm;
+  padding: $space-sm $space-lg;
+  cursor: pointer;
 
-  code {
-    padding: 0;
-    border: none;
-    background: transparent;
-    font-size: inherit;
+  &:hover,
+  &[data-copied="true"] {
+    color: $safe;
   }
 }

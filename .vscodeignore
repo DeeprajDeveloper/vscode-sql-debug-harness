@@ -3,6 +3,13 @@ src/**
 node_modules/**
 .gitignore
 tsconfig.json
+esbuild.js
+jest.config.js
 **/*.ts
 **/*.map
 dist/**
+MVP1_Requirements.md
+samples/fixtures/**
+docs/**
+scripts/**
+.github/**

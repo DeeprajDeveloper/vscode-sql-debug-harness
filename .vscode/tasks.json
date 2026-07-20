@@ -9,18 +9,19 @@
         "kind": "build",
         "isDefault": true
       },
-      "problemMatcher": "$tsc"
+      "problemMatcher": []
     },
     {
       "label": "SQL SP Harness: Generate Debug Script (CLI)",
       "type": "shell",
-      "command": "python3 -m sql_sp_harness generate -i ${file} -o ${fileDirname}/${fileBasenameNoExtension}_debug.sql",
+      "command": "node ${workspaceFolder}/out/cli.js generate -i ${file} -o ${fileDirname}/${fileBasenameNoExtension}_debug.sql",
       "group": "build",
       "presentation": {
         "reveal": "always",
         "panel": "shared"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "dependsOn": ["npm: compile"]
     }
   ]
 }

@@ -1,103 +1,180 @@
-# SQL SP Harness — VS Code Extension
+# SQL Debug Harness — VS Code Extension
 
-**Documentation:** [deeprajdeveloper.github.io/vscode-sql-sp-harness](https://deeprajdeveloper.github.io/vscode-sql-sp-harness/) · [Technical design (PDF)](docs/TECHNICAL_DESIGN.pdf)
+![SQL Debug Harness banner](images/VSCODE_BANNER.png)
 
-Run [sql-sp-harness](https://github.com/DeeprajDeveloper/sql-sp-harness) from VS Code to **analyze** T-SQL stored procedures and **generate** safe debug scripts you can execute on a dev database without writing to real tables.
+**Documentation:** [deeprajdeveloper.github.io/vscode-sql-debug-harness](https://deeprajdeveloper.github.io/vscode-sql-debug-harness/) · [Technical design](docs/TECHNICAL_DESIGN.md)
 
-> **Not a live debugger.** This extension generates a static harness script — no breakpoints or step-into debugging on SQL Server.
+Statically rewrite a T-SQL stored procedure into a **safe debug script**: DML becomes `SELECT` previews, transactions are neutralized, and variables are traced with `PRINT` / `RAISERROR` — so you can run the script without mutating real tables.
 
-## Prerequisites
+> **Not a live debugger.** This generates a static harness script — no breakpoints or step-into on SQL Server.
 
-**Python 3.10+** on your PATH (or set `spDebug.pythonPath`).
+**No Python required.** The transform engine runs in-process inside the extension (TypeScript). Install from the Marketplace (or a VSIX) and go.
 
-On first activation the extension checks for the [sql-sp-harness](https://pypi.org/project/sql-sp-harness/) backend. If Python is present but the package is missing, it runs `pip install sql-sp-harness` automatically (disable with `spDebug.autoInstallBackend: false`).
+---
 
-Status appears in the **status bar** (bottom-right) and in the **SQL SP Harness** output channel. Click the status bar item or run **Verify Python Setup** for details.
+## Overview
 
-Manual install (optional):
+Stored procedures are hard to reason about from a script diff alone. You can read a `CREATE PROCEDURE` top to bottom and still not be fully certain which rows an `UPDATE` will touch — until it has already run.
+
+SQL Debug Harness statically rewrites a T-SQL stored procedure so side-effecting statements become read-only previews — runnable against a real connection without writing anything. The engine is TypeScript and runs in-process.
+
+<video src="images/workbench-preview.mp4" controls playsinline width="100%" title="Workbench preview of SQL Debug Harness in VS Code">
+  <a href="images/workbench-preview.mp4">Download the workbench preview (MP4)</a>
+</video>
+
+*Workbench preview — analyze a procedure and generate a debug harness in VS Code.*
+
+---
+
+## Before / after
+
+**Input**
+
+```sql
+CREATE PROCEDURE dbo.usp_SimpleDml
+    @Id INT,
+    @Name NVARCHAR(100)
+AS
+BEGIN
+    INSERT INTO dbo.Items (Id, Name) VALUES (@Id, @Name);
+    UPDATE dbo.Items SET Name = @Name WHERE Id = @Id;
+    DELETE FROM dbo.Items WHERE Id = @Id;
+END
+```
+
+**Generated debug script** (excerpt)
+
+```sql
+-- [DBG] Harness: was CREATE PROCEDURE dbo.usp_SimpleDml; set parameter values below.
+DECLARE @Id INT = NULL;  -- TODO: set test value
+DECLARE @Name NVARCHAR(100) = NULL;  -- TODO: set test value
+BEGIN
+    -- [DBG-PREVIEW] Would have executed:
+    SELECT N'INSERT to table dbo.Items' AS [DBG_Action], @Id AS [@Id], @Name AS [@Name];
+    -- [DBG-PREVIEW] Would have executed:
+    SELECT N'UPDATE to table dbo.Items' AS [DBG_Action], @Name AS [@Name]
+    FROM dbo.Items
+    WHERE Id = @Id;
+    -- [DBG-PREVIEW] Would have executed:
+    SELECT N'DELETE from table dbo.Items' AS [DBG_Action], *
+    FROM dbo.Items
+    WHERE Id = @Id;
+END
+```
+
+---
+
+## Quickstart (< 5 minutes)
+
+1. Install **SQL Debug Harness** from the VS Code Marketplace (or `code --install-extension dist/sql-debug-harness.vsix`).
+2. Open [`samples/fixtures/simple_dml.sql`](samples/fixtures/simple_dml.sql) (or any `.sql` stored procedure).
+3. Right-click → **SQL Debug Harness** → **Generate Debug Script**.
+4. Review the harness in the **Workbench** — DML is preview-only; set `DECLARE` values and run against a safe connection.
+
+Optional: **Analyze Procedure** shows Summary / Warnings / Identified in the Workbench beside the source.
+
+---
+
+### Open from the sidebar
+
+Click the **SQL Debug Harness** icon in the primary activity bar (left). The Workbench view includes an **Open Workbench** button, plus Analyze / Generate actions in the view title bar.
+
+**Loading SQL:** use **Select File…** in the workbench (Quick Pick of workspace `.sql` files), **Load Active** for the open editor, or right-click a file → **Open in Workbench**.
+
+## Commands
+
+| Command | Action |
+|---------|--------|
+| **Open Workbench** | Open the workbench anytime (empty, or with the active SQL file/selection) |
+| **Generate Debug Script** | Build harness script and show it in the **Workbench** |
+| **Analyze Procedure** | Run analysis and show it in the **Workbench** |
+| **Configure Settings** | Interactive settings picker |
+
+The **Workbench** shows:
+
+- **Source** — selected text or full `.sql` file (**Select File…** or **Load Active**)
+- **Debug script** — generated harness (when available)
+- **Analysis** — collapsible Summary / Warnings / Identified sections (whole pane can collapse)
+- **Active log** — step-by-step engine log (collapsible)
+
+Panes are **resizable** (drag the splitters). Collapse state for Analysis / Active log is **remembered**. Source and Debug previews use **T-SQL syntax highlighting** that follows theme colors. Colors follow the **current IDE theme** (light/dark/high-contrast).
+
+From the toolbar you can **Analyze**, **Generate Debug**, and **save each artifact individually** (analysis `.txt`, debug `.sql`, log `.log`), or open the debug script in a normal editor tab.
+
+Available from the **SQL Debug Harness** right-click submenu on `.sql` files and from the Command Palette. Non-empty editor selections are used when present.
+
+## Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `spDebug.traceStyle` | `print` | `print` or `raiserror` for variable traces |
+| `spDebug.logToOutput` | `true` | Show step log in the **SQL Debug Harness** output channel |
+| `spDebug.saveLogFile` | `false` | Also write `<proc>.log` beside the source `.sql` |
+| `spDebug.quietWhenLogging` | `true` | Avoid duplicating progress lines when the step log is enabled |
+
+---
+
+## Limitations (trust boundary)
+
+This tool prioritizes **correctness over coverage**. If something cannot be rewritten safely, it is flagged — not silently left as live DML.
+
+- **T-SQL only** for v1 (no PostgreSQL / Oracle / MySQL dialects yet).
+- **Static rewrite only** — not a live/step-through debugger.
+- **Dynamic SQL** (`EXEC(@sql)`, `sp_executesql`) is detected and warned; not rewritten.
+- **Cursors / `WHILE`** — detected and warned; rewriting inside them is best-effort.
+- **`MERGE` / `OUTPUT`** — flagged; MERGE is disabled rather than incorrectly previewed.
+- **Stored procedures** are the target — not arbitrary ad-hoc DDL/DML scripts.
+- **No live DB connection** in the extension — generate the script, then run it yourself (e.g. in SSMS / Azure Data Studio).
+
+---
+
+## Why no Python backend?
+
+Earlier versions shelled out to a PyPI package. That forced every user to have Python on PATH, survive first-run `pip install`, and deal with corporate lockdown / wrong interpreters. VS Code already runs Node.js, so the engine was ported to TypeScript and ships **inside the VSIX**. Installing the extension is the entire setup.
+
+The engine uses a **hybrid** approach: optional AST via `node-sql-parser` (TransactSQL) plus text-scan / regex transforms for real enterprise T-SQL (`TRY/CATCH`, multi-line DML, etc.) where full AST parsing often fails.
+
+## Optional CLI (`npx`)
+
+Same engine, outside the editor:
 
 ```bash
-pip install sql-sp-harness
-python3 -m sql_sp_harness version
+npx sql-debug-harness generate -i MyProc.sql -o MyProc_debug.sql
+npx sql-debug-harness analyze -i MyProc.sql
+npx sql-debug-harness version
 ```
+
+| Flag | Meaning |
+|------|---------|
+| `-i` / `--input` | Input `.sql` path, or `-` for stdin |
+| `-o` / `--output` | Output path for `generate` (default: stdout) |
+| `--trace-style` | `print` (default) or `raiserror` |
+
+(When developing from this repo: `npm run compile && node out/cli.js generate -i …`.)
 
 ## Local development
 
 ```bash
-git clone https://github.com/DeeprajDeveloper/vscode-sql-sp-harness.git
-cd vscode-sql-sp-harness
-pip install sql-sp-harness
+git clone https://github.com/DeeprajDeveloper/vscode-sql-debug-harness.git
+cd vscode-sql-debug-harness
 npm install
+npm test
 npm run compile
 ```
 
-Press **F5** in VS Code / Cursor to launch an **Extension Development Host**.
+Press **F5** to launch an Extension Development Host.
 
-In the new window:
-
-1. Open any folder with a `.sql` file
-2. Run **SQL SP Harness: Verify Python Setup** from the Command Palette
-3. Right-click a `.sql` file → **SQL SP Harness** submenu → **Generate Debug Script** or **Analyze Procedure**
-
-### Commands
-
-| Command | Action |
-|---------|--------|
-| **Generate Debug Script** | DML → SELECT previews, PRINT traces on variables |
-| **Analyze Procedure** | Tabbed analysis panel (Summary, Warnings, Identified) beside the editor |
-| **Verify Python Setup** | Check Python + `sql-sp-harness` availability |
-
-Available from the **SQL SP Harness** right-click submenu on `.sql` files (Explorer, editor, and editor tab), and from the Command Palette. Selected text in the editor is used when non-empty.
-
-## Settings
-
-Open **Settings** and search `@ext:DeeprajAdhikary.sql-sp-harness`, or use **Cmd+Shift+P** → **SQL SP Harness: Configure Settings** for an interactive picker. Settings are grouped under **SQL SP Harness**, **SQL SP Harness › Generate**, and **SQL SP Harness › Logging**.
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `spDebug.pythonPath` | *(empty)* | Python executable. Empty = try `python3`, `python`, `py`. |
-| `spDebug.pipPackage` | `sql-sp-harness` | PyPI package to install |
-| `spDebug.autoInstallBackend` | `true` | Run pip install on activation when backend is missing |
-| `spDebug.logToOutput` | `true` | Show step-by-step `--log-file` detail in the Output channel |
-| `spDebug.saveLogFile` | `false` | Also write `<proc>.log` beside the source `.sql` file |
-| `spDebug.quietWhenLogging` | `true` | Use `--quiet` on generate so logs are not duplicated on stderr |
-| `spDebug.traceStyle` | `print` | `print` or `raiserror` for trace lines |
-
-### Step logs in the Output panel
-
-The [sql-sp-harness](https://deeprajdeveloper.github.io/sql-sp-harness/) CLI can write a detailed audit log (`--log` / `--log-file`) for each transform step. With `spDebug.logToOutput` enabled (default), the extension passes `--log-file` and prints that log under **--- Step log ---** in the **SQL SP Harness** output channel after Analyze or Generate.
-
-To also persist the log on disk next to your procedure, set `spDebug.saveLogFile` to `true`.
-
-## Package a VSIX (optional)
+### Package a VSIX
 
 ```bash
 npm run package
-code --install-extension dist/sql-sp-harness.vsix
+code --install-extension dist/sql-debug-harness.vsix
 ```
 
-## Backend documentation
+## Roadmap
 
-CLI flags, limitations, and encoding notes: [sql-sp-harness docs](https://deeprajdeveloper.github.io/sql-sp-harness/)
-
-## Project documentation
-
-| Resource | Location |
-|----------|----------|
-| User guide (GitHub Pages) | [docs/index.html](docs/index.html) → `npm run docs:serve` |
-| Technical design (Markdown) | [docs/TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md) |
-| Technical design (PDF) | `npm run docs:pdf` → [docs/TECHNICAL_DESIGN.pdf](docs/TECHNICAL_DESIGN.pdf) |
-
-Build docs locally:
-
-```bash
-npm run docs:build   # compile CSS
-npm run docs:pdf     # also generate PDF
-npm run docs:serve   # preview at http://localhost:8080
-```
-
-Enable GitHub Pages: repo **Settings → Pages → Deploy from branch → main → /docs**.
+- v2 ideas: optional connect-and-run inside `BEGIN…ROLLBACK`, richer control-flow handling, and multi-dialect support (the parser stack already spans multiple SQL dialects).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT

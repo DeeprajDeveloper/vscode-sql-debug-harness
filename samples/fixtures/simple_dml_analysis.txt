@@ -1,0 +1,30 @@
+sql-debug-harness - Analysis Report
+------------------------------------------------------------------------
+
+Summary
+  Element              Count
+  -------------------  -----
+  is_parsable          true 
+  INSERT               1    
+  UPDATE               1    
+  DELETE               1    
+  MERGE                0    
+  TRY/CATCH blocks     0    
+  IF                   0    
+  WHILE                0    
+  SET (all)            1    
+  SET (@variables)     0    
+  SELECT @assignments  0    
+
+Warnings & Errors
+  Type  Message
+  ----  -------
+  —     None   
+
+Identified
+  Kind    Detail                                                   
+  ------  ---------------------------------------------------------
+  INSERT  L8: INSERT INTO dbo.Items (Id, Name) VALUES (@Id, @Name);
+  UPDATE  L9: UPDATE dbo.Items SET Name = @Name WHERE Id = @Id;    
+  DELETE  L10: DELETE FROM dbo.Items WHERE Id = @Id;               
+------------------------------------------------------------------------
