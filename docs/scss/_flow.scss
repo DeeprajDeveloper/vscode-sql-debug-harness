@@ -5,8 +5,10 @@
   align-items: stretch;
   gap: $space-md;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   padding: $space-7xl $space-sm $space-8xl;
   margin-bottom: $space-lg;
+  max-width: 100%;
 }
 
 .flow-node {
@@ -55,4 +57,23 @@
   align-items: center;
   font-size: $font-size-2xl;
   flex-shrink: 0;
+}
+
+@media (max-width: $bp-flow) {
+  .flow {
+    flex-direction: column;
+    align-items: stretch;
+    padding: $space-4xl 0 $space-5xl;
+  }
+
+  .flow-node {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .flow-arrow {
+    justify-content: center;
+    transform: rotate(90deg);
+    padding: $space-sm 0;
+  }
 }

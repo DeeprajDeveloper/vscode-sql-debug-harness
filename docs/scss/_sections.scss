@@ -46,9 +46,14 @@
   gap: $space-4xl;
   padding: $space-4xl $space-5xl;
   background: $surface-raised;
+  min-width: 0;
 
   + .pipeline-step {
     border-top: $border-width solid $border-soft;
+  }
+
+  > div {
+    min-width: 0;
   }
 }
 
@@ -86,8 +91,19 @@
   gap: $space-xl;
   margin: 0 0 $space-6xl;
 
-  @media (max-width: $bp-sidebar) {
+  @media (max-width: $bp-tablet) {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: $bp-phone) {
+  .pipeline-step {
+    gap: $space-3xl;
+    padding: $space-3xl $space-4xl;
+  }
+
+  .callout {
+    padding: $space-3xl $space-4xl;
   }
 }
 

@@ -1,6 +1,10 @@
 // --- Breakpoints ---
-$bp-sidebar: 860px;
-$bp-flow: 500px;
+// Desktop: sidebar + content | Tablet/iPad: drawer | Phone: compact
+$bp-desktop: 1024px;
+$bp-sidebar: 1024px;
+$bp-tablet: 768px;
+$bp-phone: 480px;
+$bp-flow: 560px;
 
 // --- Layout ---
 $sidebar-width: 270px;

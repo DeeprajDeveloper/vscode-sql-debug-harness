@@ -8,6 +8,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -30,6 +31,9 @@ body {
   font-family: $font-body;
   line-height: $line-height-body;
   font-size: $font-size-body;
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 a {
@@ -57,6 +61,13 @@ code,
 .content {
   padding: $content-pad-y $content-pad-x $content-pad-bottom;
   max-width: $content-outer-max;
+  width: 100%;
+  min-width: 0;
+}
+
+.content-inner {
+  max-width: $content-max;
+  min-width: 0;
 }
 
 
@@ -222,6 +233,39 @@ footer.page-footer {
   }
 
   h1 {
+    font-size: $font-size-6xl;
+  }
+
+  h2 {
+    font-size: $font-size-3xl;
+    margin-top: $space-14xl;
+  }
+
+  .lede {
+    font-size: $font-size-md;
+  }
+}
+
+@media (max-width: $bp-phone) {
+  .content {
+    padding: $space-8xl $space-4xl $content-pad-bottom-mobile;
+  }
+
+  h1 {
     font-size: $font-size-5xl;
+  }
+
+  h2 {
+    font-size: $font-size-2xl;
+  }
+
+  .cta-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn {
+    justify-content: center;
+    width: 100%;
   }
 }

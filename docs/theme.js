@@ -66,16 +66,44 @@
   function initMobileToc() {
     var sidebar = document.getElementById("sidebar");
     var tocToggle = document.getElementById("tocToggle");
+    var backdrop = document.getElementById("sidebarBackdrop");
     if (!sidebar || !tocToggle) {
       return;
     }
+
+    function setOpen(open) {
+      sidebar.classList.toggle("open", open);
+      tocToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      tocToggle.textContent = open ? "Close" : "Contents";
+      if (backdrop) {
+        backdrop.classList.toggle("is-visible", open);
+        backdrop.hidden = !open;
+      }
+      document.body.style.overflow = open ? "hidden" : "";
+    }
+
+    function close() {
+      setOpen(false);
+    }
+
     tocToggle.addEventListener("click", function () {
-      sidebar.classList.toggle("open");
+      setOpen(!sidebar.classList.contains("open"));
     });
-    document.querySelectorAll(".navlink").forEach(function (link) {
-      link.addEventListener("click", function () {
-        sidebar.classList.remove("open");
-      });
+    if (backdrop) {
+      backdrop.addEventListener("click", close);
+    }
+    document.querySelectorAll(".navlink, .sidebar-cta, .brand").forEach(function (link) {
+      link.addEventListener("click", close);
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") {
+        close();
+      }
+    });
+    window.addEventListener("resize", function () {
+      if (window.matchMedia("(min-width: 1025px)").matches) {
+        close();
+      }
     });
   }
 

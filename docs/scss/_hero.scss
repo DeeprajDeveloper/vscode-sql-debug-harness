@@ -51,6 +51,7 @@
 
 .demo-tabs {
   display: flex;
+  flex-wrap: wrap;
   border-bottom: $border-width solid $border;
 }
 
@@ -66,6 +67,9 @@
   align-items: center;
   gap: $space-md;
   font-weight: $font-weight-medium;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
 
   .demo-tab__icon {
     width: $nav-icon-size;
@@ -92,6 +96,9 @@
 .demo-body {
   padding: $space-5xl $space-6xl;
   position: relative;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .demo-footer {
@@ -106,5 +113,35 @@
 
   .risk-tag {
     color: $risk;
+  }
+}
+
+@media (max-width: $bp-tablet) {
+  .demo-body {
+    padding: $space-4xl $space-4xl;
+  }
+
+  .demo-footer {
+    padding: 0 $space-4xl $space-4xl;
+  }
+
+  .doc-preview__caption {
+    padding: $space-2xl $space-3xl;
+  }
+}
+
+@media (max-width: $bp-phone) {
+  .demo-tab {
+    padding: $space-2xl $space-3xl;
+    font-size: $font-size-label;
+  }
+
+  .demo-body {
+    padding: $space-3xl;
+  }
+
+  .demo-footer {
+    padding: 0 $space-3xl $space-3xl;
+    font-size: $font-size-2xs;
   }
 }

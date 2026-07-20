@@ -2,8 +2,10 @@
 
 .shell {
   display: grid;
-  grid-template-columns: $sidebar-width 1fr;
+  grid-template-columns: $sidebar-width minmax(0, 1fr);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
 }
 
 .sidebar {
@@ -12,6 +14,7 @@
   align-self: start;
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
   border-right: $border-width solid $border-soft;
   padding: $sidebar-pad-x;
   background: $surface;
@@ -24,6 +27,7 @@
   margin-bottom: $space-xs;
   color: inherit;
   text-decoration: none;
+  min-width: 0;
 
   &:hover {
     text-decoration: none;
@@ -59,6 +63,10 @@
   font-size: $font-size-3xl;
   letter-spacing: $letter-spacing-tight;
   color: $text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .brand-sub {
@@ -69,6 +77,8 @@
   align-items: center;
   justify-content: center;
   margin-top: $space-lg;
+  flex-wrap: wrap;
+  gap: 0;
 }
 
 .beta-pill {
@@ -167,7 +177,6 @@
   margin: $space-7xl 0;
   padding: $space-md $space-xl;
   border-radius: $radius-sm;
-  // border: $border-width solid $safe-border;
   background: $nav-active-bg;
   color: $safe;
   font-family: $font-mono;
@@ -195,6 +204,8 @@
 
 .brand.is-compact {
   margin: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .sidebar-footer {
@@ -268,6 +279,10 @@ html[data-theme="light"] .theme-icon--moon {
   display: none;
 }
 
+.sidebar-backdrop {
+  display: none;
+}
+
 .mobile-toggle {
   font-family: $font-mono;
   font-size: $font-size-nav;
@@ -277,22 +292,54 @@ html[data-theme="light"] .theme-icon--moon {
   border-radius: $radius;
   padding: $space-md $space-2xl;
   cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 @media (max-width: $bp-sidebar) {
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: $z-backdrop;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity $transition-medium,
+      visibility $transition-medium;
+
+    &.is-visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
   }
 
   .sidebar {
-    position: relative;
-    height: auto;
-    display: none;
-    border-right: none;
-    border-bottom: $border-width solid $border-soft;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(300px, 86vw);
+    height: 100dvh;
+    z-index: $z-sidebar;
+    display: block;
+    border-right: $border-width solid $border-soft;
+    border-bottom: none;
+    transform: translateX(-105%);
+    transition: transform $transition-medium;
+    padding-top: $space-6xl;
+    box-shadow: none;
 
     &.open {
-      display: block;
+      transform: translateX(0);
+      box-shadow: 8px 0 32px rgba(0, 0, 0, 0.28);
     }
   }
 
@@ -300,11 +347,26 @@ html[data-theme="light"] .theme-icon--moon {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: $space-3xl;
     padding: $mobile-bar-pad-y $mobile-bar-pad-x;
     border-bottom: $border-width solid $border-soft;
     background: $surface;
     position: sticky;
     top: 0;
     z-index: $z-mobile-bar;
+  }
+}
+
+@media (max-width: $bp-phone) {
+  .mobile-bar {
+    padding: $space-3xl $space-4xl;
+  }
+
+  .brand-name {
+    font-size: $font-size-2xl;
+  }
+
+  .mobile-toggle {
+    padding: $space-md $space-xl;
   }
 }

@@ -9,6 +9,7 @@ code.inline {
   color: $text;
   font-weight: $font-weight-semibold;
   font-family: $font-mono;
+  word-break: break-word;
 }
 
 .demo-code {
@@ -19,6 +20,8 @@ code.inline {
   overflow-x: auto;
   margin: 0;
   color: $text;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 
   .kw {
     color: $kw;
@@ -49,6 +52,7 @@ code.inline {
   background: $surface-raised;
   margin: 0 0 $space-4xl;
   overflow: hidden;
+  max-width: 100%;
 
   pre {
     margin: 0;
@@ -58,6 +62,22 @@ code.inline {
     font-size: $font-size-label;
     line-height: $line-height-code;
     color: $text;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: $bp-phone) {
+  .demo-code {
+    font-size: $font-size-nav;
+  }
+
+  .snippet-block pre {
+    padding: $space-8xl $space-3xl $space-3xl;
+    font-size: $font-size-xs;
+  }
+
+  code.inline {
+    font-size: $font-size-label;
   }
 }
 
