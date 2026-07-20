@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Optional CLI entry for `npx sql-sp-harness generate|analyze`.
+ * Optional CLI entry for `npx sql-debug-harness generate|analyze`.
  * Shares the same TypeScript engine as the VS Code extension.
  */
 
@@ -10,12 +10,12 @@ import { analyze, generate } from "./engine";
 import type { TraceStyle } from "./engine";
 
 function printHelp(): void {
-  console.log(`sql-sp-harness — T-SQL stored procedure debug harness
+  console.log(`sql-debug-harness — T-SQL stored procedure debug harness
 
 Usage:
-  sql-sp-harness generate -i <file.sql> [-o <out.sql>] [--trace-style print|raiserror]
-  sql-sp-harness analyze  -i <file.sql> [--plain]
-  sql-sp-harness version
+  sql-debug-harness generate -i <file.sql> [-o <out.sql>] [--trace-style print|raiserror]
+  sql-debug-harness analyze  -i <file.sql> [--plain]
+  sql-debug-harness version
 
 Options:
   -i, --input <path>       Input .sql file (or - for stdin)

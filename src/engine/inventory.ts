@@ -168,7 +168,7 @@ function renderTable(
 
 export function inventoryToPlainText(inv: InventoryCounts): string {
   const lines: string[] = [
-    "sql-sp-harness - Analysis Report",
+    "sql-debug-harness - Analysis Report",
     "-".repeat(72),
   ];
 
@@ -273,7 +273,7 @@ export function inventoryToAnalyzeReport(
 
   const plainText = inventoryToPlainText(inv);
   return {
-    title: "sql-sp-harness - Analysis Report",
+    title: "sql-debug-harness - Analysis Report",
     isParsable: inv.isParsable,
     summary,
     warnings,

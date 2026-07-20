@@ -1,5 +1,5 @@
 (function () {
-  var STORAGE_KEY = "vscode-sql-sp-harness-theme";
+  var STORAGE_KEY = "vscode-sql-debug-harness-theme";
   var THEMES = ["dark", "light"];
 
   function preferredTheme() {
@@ -49,7 +49,8 @@
       syncThemeToggle(theme);
     }
     toggle.addEventListener("click", function () {
-      var current = document.documentElement.getAttribute("data-theme") || "dark";
+      var current =
+        document.documentElement.getAttribute("data-theme") || "dark";
       applyTheme(current === "dark" ? "light" : "dark");
     });
     window
@@ -62,79 +63,60 @@
       });
   }
 
-  function initSidebar() {
-    var toggle = document.getElementById("menu-toggle");
-    var backdrop = document.getElementById("sidebar-backdrop");
-    if (!toggle) {
+  function initMobileToc() {
+    var sidebar = document.getElementById("sidebar");
+    var tocToggle = document.getElementById("tocToggle");
+    if (!sidebar || !tocToggle) {
       return;
     }
-
-    function setOpen(open) {
-      document.body.classList.toggle("sidebar-open", open);
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-      if (backdrop) {
-        backdrop.setAttribute("aria-hidden", open ? "false" : "true");
-      }
-    }
-
-    toggle.addEventListener("click", function () {
-      setOpen(!document.body.classList.contains("sidebar-open"));
+    tocToggle.addEventListener("click", function () {
+      sidebar.classList.toggle("open");
     });
-
-    if (backdrop) {
-      backdrop.addEventListener("click", function () {
-        setOpen(false);
-      });
-    }
-
-    document.querySelectorAll(".sidebar-nav a[href^='#']").forEach(function (link) {
+    document.querySelectorAll(".navlink").forEach(function (link) {
       link.addEventListener("click", function () {
-        if (window.matchMedia("(max-width: 900px)").matches) {
-          setOpen(false);
-        }
+        sidebar.classList.remove("open");
       });
     });
   }
 
-  function initCodeTabs() {
-    var root = document.querySelector("[data-code-tabs]");
-    if (!root) {
+  function initScrollspy() {
+    var navlinks = Array.from(
+      document.querySelectorAll(".navlink[data-target]")
+    );
+    if (!navlinks.length) {
       return;
     }
-    var tabs = root.querySelectorAll('[role="tab"]');
-    var panels = root.querySelectorAll("[data-tab-panel]");
-
-    function activate(tabId) {
-      tabs.forEach(function (tab) {
-        var selected = tab.getAttribute("data-tab") === tabId;
-        tab.setAttribute("aria-selected", selected ? "true" : "false");
-        tab.tabIndex = selected ? 0 : -1;
-      });
-      panels.forEach(function (panel) {
-        var active = panel.getAttribute("data-tab-panel") === tabId;
-        panel.toggleAttribute("hidden", !active);
-        panel.setAttribute("data-active", active ? "true" : "false");
-      });
+    var sections = navlinks
+      .map(function (link) {
+        return document.getElementById(link.getAttribute("data-target"));
+      })
+      .filter(Boolean);
+    if (!sections.length) {
+      return;
     }
 
-    tabs.forEach(function (tab) {
-      tab.addEventListener("click", function () {
-        activate(tab.getAttribute("data-tab"));
-      });
-      tab.addEventListener("keydown", function (event) {
-        var ids = ["marketplace", "source"];
-        var current = tab.getAttribute("data-tab");
-        var index = ids.indexOf(current);
-        if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-          event.preventDefault();
-          var next =
-            event.key === "ArrowRight"
-              ? ids[(index + 1) % ids.length]
-              : ids[(index - 1 + ids.length) % ids.length];
-          activate(next);
-          root.querySelector('[data-tab="' + next + '"]').focus();
-        }
-      });
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          var link = navlinks.find(function (item) {
+            return item.getAttribute("data-target") === entry.target.id;
+          });
+          if (!link) {
+            return;
+          }
+          if (entry.isIntersecting) {
+            navlinks.forEach(function (item) {
+              item.classList.remove("active");
+            });
+            link.classList.add("active");
+          }
+        });
+      },
+      { rootMargin: "-15% 0px -70% 0px", threshold: 0 }
+    );
+
+    sections.forEach(function (section) {
+      observer.observe(section);
     });
   }
 
@@ -153,7 +135,7 @@
       })
       .then(function (data) {
         if (data && data.version) {
-          valueEl.textContent = "Version: " + data.version;
+          valueEl.textContent = "v" + data.version;
         }
       })
       .catch(function () {
@@ -215,12 +197,71 @@
     });
   }
 
+  function initDemo() {
+    var demoCodeEl = document.getElementById("demoCode");
+    var demoFootnote = document.getElementById("demoFootnote");
+    var tabs = document.querySelectorAll(".demo-tab");
+    if (!demoCodeEl || !tabs.length) {
+      return;
+    }
+
+    var originalCode =
+      '<span class="kw">CREATE PROCEDURE</span> dbo.usp_SimpleDml\n' +
+      '    <span class="com">@Id INT,</span>\n' +
+      '    <span class="com">@Name NVARCHAR(100)</span>\n' +
+      '<span class="kw">AS</span>\n' +
+      '<span class="kw">BEGIN</span>\n' +
+      '    <span class="risk-tok">INSERT INTO</span> dbo.Items (Id, Name)\n' +
+      "    <span class=\"kw\">VALUES</span> (@Id, @Name);\n" +
+      '    <span class="risk-tok">UPDATE</span> dbo.Items\n' +
+      '    <span class="kw">SET</span> Name = @Name <span class="kw">WHERE</span> Id = @Id;\n' +
+      '<span class="kw">END</span>';
+
+    var debugCode =
+      '<span class="com">-- [DBG] Harness: was CREATE PROCEDURE dbo.usp_SimpleDml</span>\n' +
+      '<span class="kw">DECLARE</span> @Id INT = <span class="kw">NULL</span>;  <span class="com">-- TODO: set test value</span>\n' +
+      '<span class="kw">DECLARE</span> @Name NVARCHAR(100) = <span class="kw">NULL</span>;\n' +
+      '<span class="kw">BEGIN</span>\n' +
+      '    <span class="com">-- [DBG-PREVIEW] Would have executed:</span>\n' +
+      '    <span class="safe-tok">SELECT</span> <span class="str">N\'INSERT to table dbo.Items\'</span> <span class="kw">AS</span> [DBG_Action],\n' +
+      "           @Id <span class=\"kw\">AS</span> [@Id], @Name <span class=\"kw\">AS</span> [@Name];\n" +
+      '    <span class="com">-- [DBG-PREVIEW] Would have executed:</span>\n' +
+      '    <span class="safe-tok">SELECT</span> <span class="str">N\'UPDATE to table dbo.Items\'</span> <span class="kw">AS</span> [DBG_Action],\n' +
+      "           @Name <span class=\"kw\">AS</span> [@Name]\n" +
+      '    <span class="kw">FROM</span> dbo.Items <span class="kw">WHERE</span> Id = @Id;\n' +
+      '<span class="kw">END</span>';
+
+    function setDemoState(state) {
+      demoCodeEl.innerHTML = state === "original" ? originalCode : debugCode;
+      if (demoFootnote) {
+        demoFootnote.innerHTML =
+          state === "original"
+            ? '<span class="risk-tag">● live write</span> — running this mutates real rows in <code class="inline">dbo.Items</code>.'
+            : '<span class="safe-tag">● read-only</span> — running this changes nothing; it only shows what would happen.';
+      }
+      tabs.forEach(function (tab) {
+        tab.classList.toggle(
+          "is-active",
+          tab.getAttribute("data-state") === state
+        );
+      });
+    }
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        setDemoState(tab.getAttribute("data-state"));
+      });
+    });
+    setDemoState("original");
+  }
+
   function boot() {
     initTheme();
-    initSidebar();
-    initCodeTabs();
+    initMobileToc();
+    initScrollspy();
     initPackageVersion();
     initCopySnippets();
+    initDemo();
   }
 
   if (document.readyState === "loading") {

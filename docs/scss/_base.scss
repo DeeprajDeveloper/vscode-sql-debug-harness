@@ -10,15 +10,30 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: $reduced-motion-duration !important;
+    transition-duration: $reduced-motion-duration !important;
+  }
+}
+
 body {
   margin: 0;
-  font-family: $font-body;
+  background: $ink;
   color: $text;
+  font-family: $font-body;
   line-height: $line-height-body;
+  font-size: $font-size-body;
 }
 
 a {
-  color: $accent;
+  color: $safe;
   text-decoration: none;
 
   &:hover {
@@ -26,7 +41,187 @@ a {
   }
 }
 
-.container {
-  width: min($container-max, $container-pad);
-  margin: 0 auto;
+a:focus-visible,
+button:focus-visible,
+.navlink:focus-visible {
+  outline: $focus-outline-width solid $safe;
+  outline-offset: $focus-outline-offset;
+  border-radius: $radius-xs;
+}
+
+code,
+.mono {
+  font-family: $font-mono;
+}
+
+.content {
+  padding: $content-pad-y $content-pad-x $content-pad-bottom;
+  max-width: $content-outer-max;
+}
+
+
+.eyebrow {
+  font-family: $font-mono;
+  font-size: $font-size-nav;
+  letter-spacing: $letter-spacing-eyebrow;
+  text-transform: uppercase;
+  color: $text-faint;
+  margin: 0 0 $space-3xl;
+}
+
+h1 {
+  font-family: $font-heading;
+  font-size: $font-size-7xl;
+  line-height: $line-height-heading;
+  margin: 0 0 $space-3xl;
+  font-weight: $font-weight-normal;
+  color: $text;
+}
+
+.lede {
+  font-size: $font-size-lg;
+  color: $muted;
+  margin: 0 0 $space-6xl;
+}
+
+h2 {
+  font-family: $font-heading;
+  font-size: $font-size-4xl;
+  font-weight: $font-weight-normal;
+  margin: $space-15xl 0 $space-4xl;
+  padding-top: $space-lg;
+  scroll-margin-top: $scroll-margin-heading;
+  color: $text;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+h3 {
+  font-family: $font-heading;
+  font-size: $font-size-xl;
+  font-weight: $font-weight-normal;
+  color: $text;
+  margin: $space-9xl 0 $space-xl;
+}
+
+p {
+  color: $text;
+  margin: 0 0 $space-4xl;
+}
+
+p.muted {
+  color: $muted;
+}
+
+ul,
+ol {
+  margin: 0 0 $space-5xl;
+  padding-left: $space-7xl;
+  color: $text;
+}
+
+li {
+  margin-bottom: $space-lg;
+}
+
+li::marker {
+  color: $text-faint;
+  font-family: $font-mono;
+  font-size: $font-size-label;
+}
+
+strong {
+  color: $text;
+  font-weight: $font-weight-semibold;
+}
+
+.section-divider {
+  border: none;
+  border-top: $border-width solid $border-soft;
+  margin: $space-14xl 0 0;
+}
+
+footer.page-footer {
+  max-width: $content-max;
+  margin-top: $space-16xl;
+  padding-top: $space-8xl;
+  border-top: $border-width solid $border-soft;
+  font-size: $font-size-label;
+  color: $text-faint;
+}
+
+.doc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-lg;
+  margin-bottom: $space-6xl;
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-2xl;
+  margin: 0 0 $space-12xl;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-md;
+  padding: $space-2xl $space-5xl;
+  border-radius: $radius;
+  font-family: $font-body;
+  font-size: $font-size-body;
+  font-weight: $font-weight-semibold;
+  border: $border-width solid transparent;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color $transition-fast,
+    background $transition-fast,
+    border-color $transition-fast;
+
+  svg {
+    width: $nav-icon-size;
+    height: $nav-icon-size;
+    flex-shrink: 0;
+  }
+
+  &-primary {
+    background: $safe;
+    color: $brand-mark-fg;
+    border-color: $safe;
+
+    &:hover {
+      background: $accent-dim;
+      color: $text;
+      border-color: $safe;
+      text-decoration: none;
+    }
+  }
+
+  &-secondary {
+    background: $surface-raised;
+    color: $text;
+    border-color: $border;
+
+    &:hover {
+      background: $nav-hover-bg;
+      border-color: $safe;
+      color: $safe;
+      text-decoration: none;
+    }
+  }
+}
+
+@media (max-width: $bp-sidebar) {
+  .content {
+    padding: $content-pad-y-mobile $content-pad-x-mobile $content-pad-bottom-mobile;
+  }
+
+  h1 {
+    font-size: $font-size-5xl;
+  }
 }

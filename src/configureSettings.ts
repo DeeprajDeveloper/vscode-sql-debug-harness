@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { getSpDebugSettings } from "./settings";
 
 const CONFIG_SECTION = "spDebug";
-const SETTINGS_FILTER = "@ext:deeprajadhikary.sql-sp-harness";
+const SETTINGS_FILTER = "@ext:deeprajadhikary.sql-debug-harness";
 
 type SettingKind = "string" | "boolean" | "enum";
 

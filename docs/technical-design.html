@@ -3,11 +3,15 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Technical Design — SQL SP Harness</title>
+		<meta
+			name="description"
+			content="Technical design — SQL Debug Harness TypeScript engine, hybrid parser, rewrite rules, and module layout."
+		/>
+		<title>SQL Debug Harness | Technical Documentation</title>
 		<link rel="icon" type="image/png" href="./images/extension-logo.png" />
 		<script>
 			(function () {
-				var key = "vscode-sql-sp-harness-theme";
+				var key = "vscode-sql-debug-harness-theme";
 				var stored = localStorage.getItem(key);
 				var theme =
 					stored === "light" || stored === "dark"
@@ -19,150 +23,430 @@
 			})();
 		</script>
 		<link rel="stylesheet" href="./scss/css/styles.css" />
-		<style>
-			.doc-page {
-				min-height: 100vh;
-				padding: 2rem 1.25rem 4rem;
-			}
-			.doc-toolbar {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.65rem;
-				margin-bottom: 1.5rem;
-				max-width: 1080px;
-				margin-left: auto;
-				margin-right: auto;
-			}
-			.doc-article {
-				max-width: 1080px;
-				margin: 0 auto;
-				background: var(--surface);
-				border: 1px solid var(--border);
-				border-radius: 10px;
-				padding: 2rem;
-				color: var(--text);
-				line-height: 1.7;
-			}
-			.doc-article h1,
-			.doc-article h2,
-			.doc-article h3 {
-				font-family: var(--font-heading);
-				color: var(--accent);
-			}
-			.doc-article h1 { font-size: 1.75rem; margin-top: 0; }
-			.doc-article h2 {
-				font-size: 1.35rem;
-				margin-top: 2rem;
-				padding-bottom: 0.35rem;
-				border-bottom: 1px solid var(--border);
-			}
-			.doc-article table {
-				width: 100%;
-				border-collapse: collapse;
-				font-size: 0.92rem;
-				margin: 1rem 0;
-			}
-			.doc-article th,
-			.doc-article td {
-				text-align: left;
-				padding: 0.65rem 0.85rem;
-				border-bottom: 1px solid var(--border);
-			}
-			.doc-article th {
-				background: var(--surface-2);
-				color: var(--muted);
-			}
-			.doc-article pre {
-				background: var(--code-bg);
-				border: 1px solid var(--border);
-				border-radius: 8px;
-				padding: 1rem;
-				overflow-x: auto;
-				font-family: var(--mono);
-				font-size: 0.85rem;
-			}
-			.doc-article code {
-				font-family: var(--mono);
-				font-size: 0.88em;
-				background: var(--code-bg);
-				padding: 0.12em 0.35em;
-				border-radius: 4px;
-				border: 1px solid var(--border);
-			}
-			.doc-article pre code {
-				padding: 0;
-				border: none;
-				background: transparent;
-			}
-			.loading { color: var(--muted); }
-		</style>
 	</head>
 	<body>
-		<div class="doc-page">
-			<div class="doc-toolbar">
-				<a class="sidebar-btn" href="index.html" aria-label="Back to docs" title="Back to docs">
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" height="20" width="20" aria-hidden="true">
-						<path fill="currentColor" d="M11.5 4.5a.5.5 0 0 1 0 .707L7.707 9H16.5a.5.5 0 0 1 0 1H7.707l3.793 3.793a.5.5 0 0 1-.708.707l-4.5-4.5a.5.5 0 0 1 0-.707l4.5-4.5a.5.5 0 0 1 .708 0z" />
-					</svg>
+		<div class="shell">
+			<div class="mobile-bar">
+				<a class="brand is-compact" href="index.html">
+					<img class="brand-logo" src="./images/extension-logo.png" alt="" />
+					<span class="brand-name">sql-debug-harness</span>
 				</a>
-				<a class="sidebar-btn" href="TECHNICAL_DESIGN.md" aria-label="Raw Markdown" target="_blank" title="View a Raw Markdown file (New Tab)">
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 16" id="File-Md-Duotone--Streamline-Phosphor" height="16" width="16">
-						<desc>
-						  File Md Duotone Streamline Icon: https://streamlinehq.com
-						</desc>
-						<g id="file-md-duotone">
-						  <path id="Vector" fill="currentColor" d="M14.33230625 4.98461875h-4.2215375V0.763075l4.2215375 4.2215375Z" stroke-width="0.0625"></path>
-						  <path id="Vector_2" fill="currentColor" d="M14.7589875 4.5579375 10.53744375 0.3364c-0.05600625 -0.0559875 -0.122575 -0.10038125 -0.19576875 -0.13065 -0.0732 -0.0302625 -0.151675 -0.0458125 -0.23090625 -0.04575H2.87384375c-0.31989375 0 -0.626675 0.127075 -0.852875 0.353275 -0.2262 0.2262 -0.353275 0.5329875 -0.353275 0.85288125v5.4276875c0 0.15996875 0.0635375 0.313375 0.17663125 0.42645625 0.1131 0.113075 0.2665 0.176625 0.42644375 0.176625s0.31334375 -0.06355 0.42644375 -0.176625c0.11309375 -0.11308125 0.17663125 -0.2664875 0.17663125 -0.42645625v-5.4276875h6.63385v3.61845625c0 0.15994375 0.06355 0.31334375 0.176625 0.42644375 0.113075 0.11309375 0.26648125 0.1766375 0.42645 0.1766375h3.6184625v9.64923125c0 0.1599625 0.06355 0.313375 0.176625 0.42645s0.2664875 0.176625 0.42645 0.176625 0.313375 -0.06355 0.42645 -0.176625 0.17663125 -0.2664875 0.17663125 -0.42645V4.98461875c0.000075 -0.079225 -0.01545625 -0.157675 -0.0457625 -0.23089375 -0.03023125 -0.0732125 -0.07463125 -0.1397375 -0.1306375 -0.1957875Zm-4.04514375 -2.33918125 2.1627875 2.16278125h-2.1627875V2.21875625Zm-1.20615 6.9874h-1.20615625c-0.1599625 0 -0.313375 0.06355 -0.42645 0.176625s-0.176625 0.26648125 -0.176625 0.42645v4.2215375c0 0.15996875 0.06355 0.313375 0.176625 0.42645s0.2664875 0.176625 0.42645 0.176625h1.20615625c0.71976875 0 1.41006875 -0.28593125 1.9189875 -0.79485 0.508925 -0.508925 0.79485625 -1.19921875 0.79485625 -1.91899375s-0.28593125 -1.41006875 -0.79485625 -1.9189875c-0.50891875 -0.508925 -1.19921875 -0.79485625 -1.9189875 -0.79485625Zm0 4.2215375h-0.60308125v-3.0153875h0.60308125c0.3998375 0 0.78331875 0.1588375 1.0660875 0.44160625 0.28276875 0.28276875 0.44160625 0.66625 0.44160625 1.0660875s-0.1588375 0.78331875 -0.44160625 1.0660875c-0.28276875 0.28276875 -0.66625 0.44160625 -1.0660875 0.44160625Zm-3.0153875 -3.6184625v4.2215375c0 0.15996875 -0.06355 0.313375 -0.176625 0.42645s-0.26650625 0.176625 -0.42645 0.176625 -0.31334375 -0.06354375 -0.42644375 -0.176625c-0.11309375 -0.113075 -0.17663125 -0.26648125 -0.17663125 -0.42645v-2.308275l-1.013925 1.4481375c-0.055625 0.07930625 -0.12954375 0.1440625 -0.2154875 0.1887625s-0.18140625 0.068075 -0.27828125 0.068075 -0.1923375 -0.02336875 -0.27828125 -0.068075 -0.1598625 -0.10945625 -0.2154875 -0.1887625l-1.013925 -1.4481375v2.308275c0 0.15996875 -0.06354375 0.313375 -0.17663125 0.42645 -0.1131 0.11308125 -0.2665 0.176625 -0.42644375 0.176625s-0.31334375 -0.06354375 -0.42644375 -0.176625c-0.11309375 -0.113075 -0.1766375 -0.26648125 -0.1766375 -0.42645v-4.2215375c0.00005625 -0.12823125 0.04095625 -0.25306875 0.116775 -0.35641875s0.1826125 -0.17994375 0.30486875 -0.2184625c0.12225625 -0.0386 0.25363125 -0.03716875 0.37504375 0.00399375 0.12141875 0.0411625 0.22655625 0.1199375 0.3001625 0.224875l1.617 2.30978125 1.617 -2.30978125c0.07360625 -0.1049375 0.17874375 -0.1837125 0.30015625 -0.224875 0.12141875 -0.0411625 0.2527875 -0.04259375 0.37505 -0.00399375 0.1222875 0.03851875 0.22903125 0.1151125 0.30486875 0.2184625 0.0758375 0.10335 0.11669375 0.2281875 0.11676875 0.35641875Z" stroke-width="0.0625"></path>
-						</g>
-					  </svg>
-				</a>
-				<a class="sidebar-btn" href="TECHNICAL_DESIGN.pdf" aria-label="Download PDF" target="_blank" title="View a PDF file (New Tab)">
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 16" id="File-Pdf-Duotone--Streamline-Phosphor" height="16" width="16">
-						<desc>
-						  File Pdf Duotone Streamline Icon: https://streamlinehq.com
-						</desc>
-						<g id="file-pdf-duotone">
-						  <path id="Vector" fill="currentColor" d="M14.20666875 5.38666875h-4.5733375V0.81333125l4.5733375 4.5733375Z" stroke-width="0.0625"></path>
-						  <path id="Vector_2" fill="currentColor" d="M15.51333125 10.61333125c0 0.1733 -0.06884375 0.3394875 -0.19134375 0.4619875s-0.28869375 0.19135 -0.4619875 0.19135H12.9v1.3066625h1.30666875c0.17329375 0 0.3394875 0.06885 0.4619875 0.19135s0.19134375 0.2886875 0.19134375 0.4619875 -0.06884375 0.3394875 -0.19134375 0.4619875 -0.28869375 0.19134375 -0.4619875 0.19134375H12.9v1.30666875c0 0.17329375 -0.06884375 0.3394875 -0.19134375 0.4619875s-0.28869375 0.19134375 -0.4619875 0.19134375 -0.3394875 -0.06884375 -0.4619875 -0.19134375 -0.19135 -0.28869375 -0.19135 -0.4619875v-4.5733375c0 -0.17329375 0.06885 -0.3394875 0.19135 -0.4619875s0.2886875 -0.19134375 0.4619875 -0.19134375H14.86c0.17329375 0 0.3394875 0.06884375 0.4619875 0.19134375s0.19134375 0.28869375 0.19134375 0.4619875Zm-10.78 1.6333375c0 0.60645625 -0.2409125 1.1880875 -0.66974375 1.61691875s-1.01045625 0.66974375 -1.61691875 0.66974375H1.79333125v0.6533375c0 0.17329375 -0.06883125 0.3394875 -0.19135 0.4619875 -0.122525 0.1225 -0.28870625 0.19134375 -0.46198125 0.19134375s-0.33945625 -0.06884375 -0.46198125 -0.19134375c-0.1225125 -0.1225 -0.19135 -0.28869375 -0.19135 -0.4619875v-4.5733375c0 -0.17329375 0.0688375 -0.3394875 0.19135 -0.4619875 0.122525 -0.1225 0.28870625 -0.19134375 0.46198125 -0.19134375h1.30666875c0.6064625 0 1.1880875 0.24091875 1.61691875 0.66975s0.66974375 1.0104625 0.66974375 1.61691875Zm-1.3066625 0c0 -0.25995 -0.10325625 -0.50919375 -0.2870375 -0.69294375 -0.1837875 -0.18383125 -0.43305 -0.28705625 -0.6929625 -0.28705625H1.79333125v1.96h0.6533375c0.2599125 0 0.509175 -0.10323125 0.6929625 -0.2870625 0.1837875 -0.18375 0.2870375 -0.43299375 0.2870375 -0.6929375ZM10.61333125 12.9c0 0.77975 -0.3097625 1.527575 -0.86109375 2.07890625 -0.55133125 0.55133125 -1.29915 0.86109375 -2.07890625 0.86109375h-1.3066625c-0.1733 0 -0.3394875 -0.06884375 -0.4619875 -0.19134375s-0.19135 -0.28869375 -0.19135 -0.4619875v-4.5733375c0 -0.17329375 0.06885 -0.3394875 0.19135 -0.4619875s0.2886875 -0.19134375 0.4619875 -0.19134375h1.3066625c0.77975625 0 1.527575 0.3097625 2.07890625 0.86109375 0.55133125 0.55133125 0.86109375 1.29915 0.86109375 2.07890625Zm-1.3066625 0c0 -0.4331625 -0.172075 -0.8486 -0.47840625 -1.15493125 -0.30633125 -0.30633125 -0.72176875 -0.4784 -1.15493125 -0.4784H7.02v3.2666625h0.65333125c0.4331625 0 0.8486 -0.17206875 1.15493125 -0.4784 0.30633125 -0.30633125 0.47840625 -0.72176875 0.47840625 -1.15493125Zm-8.82 -5.55333125v-5.88c0 -0.34655625 0.1376625 -0.67890625 0.3827125 -0.92395625C1.11443125 0.29766875 1.44678125 0.16 1.79333125 0.16h7.84c0.08583125 -0.0000625 0.17085 0.016775 0.25015 0.0495625 0.07929375 0.03279375 0.15140625 0.08088125 0.2120875 0.1415375l4.57333125 4.57333125c0.060675 0.06071875 0.10878125 0.13279375 0.141525 0.21210625 0.03283125 0.0793125 0.04965625 0.16430625 0.049575 0.25013125v1.96c0 0.17329375 -0.06884375 0.3394875 -0.19134375 0.4619875S14.3799625 8 14.20666875 8s-0.3394875 -0.06884375 -0.4619875 -0.19134375 -0.19135 -0.28869375 -0.19135 -0.4619875V6.04h-3.92c-0.17329375 0 -0.3394875 -0.0688375 -0.4619875 -0.19135 -0.1225 -0.122525 -0.19134375 -0.2887125 -0.19134375 -0.46198125v-3.92H1.79333125v5.88c0 0.17329375 -0.0688375 0.3394875 -0.19135 0.4619875C1.47945625 7.93115625 1.313275 8 1.14 8s-0.33945625 -0.06884375 -0.46198125 -0.19134375c-0.1225125 -0.1225 -0.19135 -0.28869375 -0.19135 -0.4619875Zm9.8 -2.6133375h2.3430125l-2.3430125 -2.3430125v2.3430125Z" stroke-width="0.0625"></path>
-						</g>
-					  </svg>
-				</a>
-				<button
-					type="button"
-					class="sidebar-btn"
-					id="theme-toggle"
-					aria-label="Switch to light theme"
-					title="Switch to light theme"
-					aria-pressed="false"
-				>
-					<svg class="theme-icon theme-icon--sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" height="20" width="20" aria-hidden="true">
-						<path fill="currentColor" d="M2.5 7.5a7.5 7.5 0 1 1 12.7175 5.387c-0.254 0.245 -0.449 0.5 -0.566 0.774l-0.953 2.211a0.625 0.625 0 0 1 -0.575 0.377H8.273a1.25 1.25 0 0 1 -1.118 -0.691L6.875 18.75a0.625 0.625 0 0 1 0 -1.25 0.625 0.625 0 0 1 0 -1.25 0.625 0.625 0 0 1 -0.575 -0.377l-0.951 -2.213a2.5 2.5 0 0 0 -0.566 -0.772A7.475 7.475 0 0 1 2.5 7.5m7.5 -6.25a6.25 6.25 0 0 0 -4.349 10.74c0.329 0.318 0.643 0.705 0.845 1.176L7.288 15h5.427l0.79 -1.834c0.203 -0.471 0.516 -0.859 0.845 -1.176A6.25 6.25 0 0 0 10 1.25" />
-					</svg>
-					<svg class="theme-icon theme-icon--moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" height="20" width="20" aria-hidden="true">
-						<path fill="currentColor" d="M2.788 5.438A7.5 7.5 0 0 0 2.5 7.5c0 2.114 0.875 4.025 2.283 5.387 0.254 0.245 0.449 0.5 0.566 0.774l0.953 2.211a0.625 0.625 0 0 0 0.575 0.377 0.625 0.625 0 0 0 0 1.25 0.625 0.625 0 0 0 0 1.25l0.28 0.559a1.25 1.25 0 0 0 1.118 0.691h3.455a1.25 1.25 0 0 0 1.118 -0.691L13.125 18.75a0.625 0.625 0 0 0 0 -1.25 0.625 0.625 0 0 0 0 -1.25 0.625 0.625 0 0 0 0.36 -0.114L12.348 15H7.288l-0.79 -1.834a3.75 3.75 0 0 0 -0.845 -1.176 6.225 6.225 0 0 1 -1.819 -5.506zm1.985 -3.316 0.885 0.884a6.25 6.25 0 0 1 8.838 8.838l0.884 0.884a7.5 7.5 0 0 0 -10.605 -10.605zm-2.715 -0.064a0.625 0.625 0 0 1 0.885 0l15 15a0.625 0.625 0 0 1 -0.885 0.885l-15 -15a0.625 0.625 0 0 1 0 -0.885" />
-					</svg>
-				</button>
+				<button type="button" class="mobile-toggle" id="tocToggle">Contents ▾</button>
 			</div>
-			<article id="content" class="doc-article">
-				<p class="loading">Loading technical design…</p>
-			</article>
+
+			<aside class="sidebar" id="sidebar">
+				<a class="brand" href="index.html">
+					<img class="brand-logo" src="./images/extension-logo.png" alt="" />
+					<span class="brand-name">sql-debug-harness</span>
+				</a>
+				<p class="brand-sub" id="package-version">
+					<span class="sidebar-version__value">v0.0.1-beta.1</span>
+					<span class="beta-pill">BETA</span>
+				</p>
+
+				<a class="sidebar-cta" href="index.html">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M19 12H5M12 19l-7-7 7-7" />
+					</svg>
+					User Documentation
+				</a>
+
+				<nav aria-label="Technical design">
+					<div class="toc-group">
+						<p class="toc-label">Technical design</p>
+						<a class="navlink" href="#architecture" data-target="architecture">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+							Architecture
+						</a>
+						<a class="navlink" href="#parser" data-target="parser">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+							Parser &amp; AST
+						</a>
+						<a class="navlink" href="#rewrite-engine" data-target="rewrite-engine">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+							Rewrite engine
+						</a>
+						<a class="navlink" href="#module-boundaries" data-target="module-boundaries">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+							Module boundaries
+						</a>
+						<a class="navlink" href="#data-flow" data-target="data-flow">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/><path d="M8 12h8"/></svg>
+							Data flow
+						</a>
+						<a class="navlink" href="#extension-ux" data-target="extension-ux">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+							Extension UX &amp; CLI
+						</a>
+						<a class="navlink" href="#unsupported" data-target="unsupported">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
+							Unsupported constructs
+						</a>
+						<a class="navlink" href="#roadmap" data-target="roadmap">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/><path d="M3 12h12"/><path d="M21 6v12"/></svg>
+							Roadmap
+						</a>
+					</div>
+				</nav>
+
+				<div class="sidebar-footer">
+					<div class="sidebar-actions">
+						<a
+							class="sidebar-btn"
+							href="TECHNICAL_DESIGN.md"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="View raw Markdown"
+							title="Raw Markdown"
+						>
+							<svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+								<polyline points="14 2 14 8 20 8"/>
+								<path d="M8 13h2M8 17h8M12 13h4"/>
+							</svg>
+						</a>
+						<a
+							class="sidebar-btn"
+							href="TECHNICAL_DESIGN.pdf"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="Download PDF"
+							title="PDF"
+						>
+							<svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+								<polyline points="14 2 14 8 20 8"/>
+								<path d="M10 13v4M10 13H8.5a1.5 1.5 0 0 0 0 3H10M14 17v-4h1.5a1.5 1.5 0 0 1 0 3H14"/>
+							</svg>
+						</a>
+						<a
+							class="sidebar-btn"
+							href="https://github.com/DeeprajDeveloper/vscode-sql-debug-harness"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="View extension on GitHub"
+							title="GitHub repository"
+						>
+							<svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+								<path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.238 1.84 1.238 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.76-1.605-2.665-.303-5.467-1.333-5.467-5.932 0-1.31.468-2.382 1.236-3.222-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.29-1.552 3.297-1.23 3.297-1.23.655 1.653.243 2.873.12 3.176.77.84 1.235 1.912 1.235 3.222 0 4.61-2.807 5.625-5.48 5.922.43.372.814 1.103.814 2.222 0 1.606-.015 2.902-.015 3.297 0 .32.216.694.825.576C20.565 21.796 24 17.297 24 12c0-6.63-5.37-12-12-12z"/>
+							</svg>
+						</a>
+						<a
+							class="sidebar-btn"
+							href="mailto:deepraj.developer@gmail.com"
+							aria-label="Send an email"
+							title="Email deepraj.developer@gmail.com"
+						>
+							<svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+								<polyline points="22,6 12,13 2,6"/>
+							</svg>
+						</a>
+						<button
+							type="button"
+							class="sidebar-btn"
+							id="theme-toggle"
+							aria-label="Switch to light theme"
+							title="Switch to light theme"
+							aria-pressed="false"
+						>
+							<svg class="theme-icon theme-icon--sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-16a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1zM4.222 5.636a1 1 0 0 1 1.414 0l.707.707A1 1 0 1 1 4.93 7.757l-.707-.707a1 1 0 0 1 0-1.414zm12.728 12.728a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414zM1 13a1 1 0 1 1 0-2h1a1 1 0 1 1 0 2H1zm18 0a1 1 0 1 1 0-2h1a1 1 0 1 1 0 2h-1zM4.222 18.364a1 1 0 0 1 0-1.414l.707-.707a1 1 0 1 1 1.414 1.414l-.707.707a1 1 0 0 1-1.414 0zm12.728-12.728a1 1 0 0 1 0-1.414l.707-.707a1 1 0 0 1 1.414 1.414l-.707.707a1 1 0 0 1-1.414 0z"/>
+							</svg>
+							<svg class="theme-icon theme-icon--moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+							</svg>
+						</button>
+					</div>
+				</div>
+			</aside>
+
+			<main class="content">
+				<div class="content-inner">
+					<p class="eyebrow">Technical design</p>
+					<h1>Architecture &amp; engine</h1>
+					<p class="lede">
+						In-process TypeScript transform for T-SQL stored procedures — hybrid AST + text scan,
+						no external runtime beyond VS&nbsp;Code’s Node.js host.
+					</p>
+
+					<table>
+						<thead>
+							<tr>
+								<th>Field</th>
+								<th>Value</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>Project</td>
+								<td><code class="inline">vscode-sql-debug-harness</code></td>
+							</tr>
+							<tr>
+								<td>Extension ID</td>
+								<td><code class="inline">DeeprajAdhikary.sql-debug-harness</code></td>
+							</tr>
+							<tr>
+								<td>Package / CLI</td>
+								<td><code class="inline">sql-debug-harness</code></td>
+							</tr>
+							<tr>
+								<td>Version</td>
+								<td><code class="inline">0.0.1-beta.1</code></td>
+							</tr>
+							<tr>
+								<td>Engine</td>
+								<td><code class="inline">src/engine/</code> (TypeScript)</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<h2 id="architecture">Architecture</h2>
+					<p>
+						The extension runs entirely on the Node.js runtime that ships with VS&nbsp;Code — there
+						is no external interpreter or package manager involved. Installing the extension from
+						the Marketplace (or a VSIX) is the complete setup.
+					</p>
+					<div class="callout callout-safe">
+						<p class="callout-title">Why not a separate backend process?</p>
+						<p>
+							An earlier design shelled out to a Python backend. That required Python on
+							<code class="inline">PATH</code>, a first-run
+							<code class="inline">pip install</code> that could fail on locked-down machines, and
+							two languages to maintain. Porting to TypeScript removed that dependency class —
+							the engine ships inside the VSIX via esbuild (<code class="inline">node-sql-parser</code>
+							bundled).
+						</p>
+					</div>
+
+					<h2 id="parser">Parser &amp; AST</h2>
+					<p>
+						SQL parsing uses <code class="inline">node-sql-parser</code>’s TransactSQL build as a
+						best-effort AST. On real enterprise procedures (deploy preambles,
+						<code class="inline">TRY/CATCH</code>, multi-batch scripts) the AST often fails — so
+						<strong>text scan is authoritative</strong> for DML detection and rewrites.
+					</p>
+					<pre
+						class="demo-code"
+						style="
+							border: 1px solid var(--border);
+							border-radius: 8px;
+							padding: 14px 16px;
+							background: var(--surface-raised);
+							margin-bottom: 16px;
+						"
+					><span class="kw">import</span> { Parser } <span class="kw">from</span> <span class="str">'node-sql-parser/build/transactsql'</span>;
+<span class="kw">const</span> parser = <span class="kw">new</span> Parser();
+<span class="kw">const</span> ast = parser.astify(sqlText);</pre>
+					<p class="muted">
+						Analysis is fully static — no database connection is opened or required to generate a
+						debug script.
+					</p>
+
+					<h2 id="rewrite-engine">Rewrite engine</h2>
+					<p>The engine applies a small set of transform rules (correctness over coverage):</p>
+					<table>
+						<thead>
+							<tr>
+								<th>Input construct</th>
+								<th>Rewrite behavior</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="tag-risk">INSERT / UPDATE / DELETE</td>
+								<td>
+									Rewritten to an equivalent <code class="inline">SELECT</code> that previews
+									affected rows or values
+								</td>
+							</tr>
+							<tr>
+								<td class="tag-risk">BEGIN TRAN / COMMIT / ROLLBACK / SAVE TRAN</td>
+								<td>Neutralized in place — structure preserved, nothing can commit</td>
+							</tr>
+							<tr>
+								<td class="tag-safe">Named EXEC</td>
+								<td><code class="inline">PRINT</code> diagnostic stubs</td>
+							</tr>
+							<tr>
+								<td class="tag-safe">Declared variables</td>
+								<td>
+									<code class="inline">PRINT</code> /
+									<code class="inline">RAISERROR</code> traces at key points
+								</td>
+							</tr>
+							<tr>
+								<td class="tag-flag">Dynamic SQL, cursors, WHILE, MERGE, OUTPUT</td>
+								<td>Flagged as an explicit warning — left unrewritten rather than guessed</td>
+							</tr>
+						</tbody>
+					</table>
+					<p class="muted">
+						For a tool whose value proposition is safety, an incorrect silent rewrite is worse than
+						an honest “I can’t safely handle this.”
+					</p>
+
+					<h2 id="module-boundaries">Module boundaries</h2>
+					<div class="module-grid">
+						<div class="module-card">
+							<p class="module-name">src/engine/parser.ts</p>
+							<p class="module-desc">Best-effort node-sql-parser wrapper; soft failures.</p>
+						</div>
+						<div class="module-card">
+							<p class="module-name">src/engine/transform.ts</p>
+							<p class="module-desc">Orchestration — DML previews, TCL, traces, EXEC stubs.</p>
+						</div>
+						<div class="module-card">
+							<p class="module-name">src/engine/inventory.ts</p>
+							<p class="module-desc">Analyze report — Summary / Warnings / Identified.</p>
+						</div>
+						<div class="module-card">
+							<p class="module-name">src/engine/unsupported.ts</p>
+							<p class="module-desc">Detection rules for constructs the engine won’t guess at.</p>
+						</div>
+						<div class="module-card">
+							<p class="module-name">src/engine/scan.ts</p>
+							<p class="module-desc">Comment-aware DML / TRY-CATCH line scan (authoritative).</p>
+						</div>
+						<div class="module-card">
+							<p class="module-name">src/cli.ts</p>
+							<p class="module-desc">
+								<code class="inline">npx sql-debug-harness</code> — same engine, outside the editor.
+							</p>
+						</div>
+					</div>
+
+					<h2 id="data-flow">Data flow</h2>
+					<div class="flow" role="img" aria-label="SQL prepare scan analyze transform flow">
+						<div class="flow-node">.sql file</div>
+						<div class="flow-arrow">→</div>
+						<div class="flow-node">Prepare</div>
+						<div class="flow-arrow">→</div>
+						<div class="flow-node split">
+							<span class="sub">optional AST</span>
+							<span class="sub">text scan</span>
+						</div>
+						<div class="flow-arrow">→</div>
+						<div class="flow-node split">
+							<span class="sub safe">Debug script</span>
+							<span class="sub risk">Analyze panel</span>
+						</div>
+					</div>
+					<p class="muted">
+						Both outputs share the same engine pass — harness SQL and Analyze warnings stay in
+						sync.
+					</p>
+
+					<pre
+						class="demo-code"
+						style="
+							border: 1px solid var(--border);
+							border-radius: 8px;
+							padding: 14px 16px;
+							background: var(--surface-raised);
+							margin-bottom: 16px;
+							white-space: pre-wrap;
+						"
+					>SQL text
+   │
+   ▼
+prepare (strip GO, deploy preamble, CREATE PROC → DECLARE)
+   │
+   ├──► node-sql-parser (optional AST)
+   │
+   └──► text scan (DML / TRY-CATCH / unsupported)
+            │
+            ├── analyze → Summary / Warnings / Identified
+            │
+            └── transform → previews, EXEC stubs, TCL, traces</pre>
+
+					<h2 id="extension-ux">Extension UX &amp; CLI</h2>
+					<table>
+						<thead>
+							<tr>
+								<th>Command</th>
+								<th>Behavior</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td><code class="inline">spDebug.generate</code></td>
+								<td>In-process generate → Workbench with debug script + log</td>
+							</tr>
+							<tr>
+								<td><code class="inline">spDebug.analyze</code></td>
+								<td>In-process analyze → Workbench with analysis + log</td>
+							</tr>
+							<tr>
+								<td><code class="inline">spDebug.openWorkbench</code></td>
+								<td>Open workbench for current file / selection</td>
+							</tr>
+							<tr>
+								<td><code class="inline">spDebug.openInWorkbench</code></td>
+								<td>Load a chosen <code class="inline">.sql</code> into the workbench</td>
+							</tr>
+						</tbody>
+					</table>
+					<div class="snippet-block">
+						<button type="button" class="snippet-block__copy">Copy</button>
+						<pre><code>sql-debug-harness generate -i &lt;file.sql&gt; [-o &lt;out.sql&gt;] [--trace-style print|raiserror]
+sql-debug-harness analyze  -i &lt;file.sql&gt;
+sql-debug-harness version</code></pre>
+					</div>
+					<p class="muted">
+						<code class="inline">generate</code> exits with code <strong>2</strong> when warnings
+						are present. Build: <code class="inline">npm run compile</code> →
+						<code class="inline">out/extension.js</code>, <code class="inline">out/cli.js</code>.
+					</p>
+
+					<h2 id="unsupported">Unsupported constructs</h2>
+					<p>Detected and surfaced as warnings rather than silently rewritten:</p>
+					<ul>
+						<li>
+							Dynamic SQL (<code class="inline">EXEC(@sql)</code>,
+							<code class="inline">sp_executesql</code>)
+						</li>
+						<li>Cursors and <code class="inline">WHILE</code>-loop control flow</li>
+						<li>
+							<code class="inline">MERGE</code> (disabled + commented) and
+							<code class="inline">OUTPUT</code> clause warnings
+						</li>
+					</ul>
+					<p class="muted">
+						Temp tables are previewed; table-variable DML is left alone. Fixture coverage lives
+						under <code class="inline">samples/fixtures/</code> with Jest in
+						<code class="inline">src/engine/__tests__/</code>.
+					</p>
+
+					<h2 id="roadmap">Roadmap</h2>
+					<ul>
+						<li>
+							<strong>Marketplace publish</strong> — VSIX packaging works today; listing still
+							pending for a stable v1.0.
+						</li>
+						<li>
+							<strong>Multi-dialect support</strong> —
+							<code class="inline">node-sql-parser</code> already spans other dialects.
+						</li>
+						<li>
+							<strong>Optional live transaction-wrapper mode</strong> — connect and run inside
+							<code class="inline">BEGIN…ROLLBACK</code>.
+						</li>
+						<li>
+							<strong>Richer control-flow handling</strong> inside cursors /
+							<code class="inline">WHILE</code> (still detect + warn for v1).
+						</li>
+					</ul>
+
+					<footer class="page-footer">
+						<p>
+							No telemetry. No network calls at runtime for generate/analyze. MIT license.
+							<a href="index.html">← Back to docs</a>
+						</p>
+					</footer>
+				</div>
+			</main>
 		</div>
-		<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 		<script src="theme.js"></script>
-		<script>
-			fetch("TECHNICAL_DESIGN.md")
-				.then(function (r) {
-					if (!r.ok) throw new Error("Could not load TECHNICAL_DESIGN.md");
-					return r.text();
-				})
-				.then(function (md) {
-					document.getElementById("content").innerHTML = marked.parse(md);
-				})
-				.catch(function (err) {
-					document.getElementById("content").innerHTML =
-						'<p>Failed to load document. See <a href="TECHNICAL_DESIGN.md">TECHNICAL_DESIGN.md</a> on GitHub.</p>';
-					console.error(err);
-				});
-		</script>
 	</body>
 </html>

@@ -1,4 +1,4 @@
-sql-sp-harness - Analysis Report
+sql-debug-harness - Analysis Report
 ------------------------------------------------------------------------
 
 Summary

@@ -1,105 +1,158 @@
 // --- Breakpoints ---
-$bp-sidebar: 900px;
+$bp-sidebar: 860px;
 $bp-flow: 500px;
 
 // --- Layout ---
-$sidebar-width: 15rem;
-$sidebar-btn-size: 2.5rem;
-$container-max: 1080px;
-$container-pad: 92vw;
-$card-min: 260px;
-$content-max-intro: 52rem;
-$content-max-lead: 60rem;
+$sidebar-width: 270px;
+$sidebar-btn-size: 2.25rem;
+$content-outer-max: 1240px;
+$content-max: 760px;
+$content-pad-y: 64px;
+$content-pad-x: 48px;
+$content-pad-bottom: 120px;
+$content-pad-y-mobile: 36px;
+$content-pad-x-mobile: 20px;
+$content-pad-bottom-mobile: 90px;
+$sidebar-pad-y: 28px;
+$sidebar-pad-x: 22px;
+$sidebar-pad-bottom: 40px;
+$mobile-bar-pad-y: 16px;
+$mobile-bar-pad-x: 20px;
+$brand-mark-size: 26px;
+$pipeline-num-size: 22px;
+$flow-node-min: 118px;
+$demo-dot-size: 7px;
+$scroll-margin-heading: 28px;
+$nav-icon-size: 16px;
+$theme-icon-size: 18px;
+$preview-video-max-height: 480px;
+$banner-matte: #ffffff;
 
 // --- Font stacks (compiled into :root CSS custom properties) ---
-$font-heading-stack: "Alegreya Sans", system-ui, -apple-system, sans-serif;
-$font-body-stack: "Space Grotesk", system-ui, -apple-system, sans-serif;
-$font-mono-stack: "Cascadia Code", Consolas, monospace;
-$font-doto-stack: "Doto", system-ui, -apple-system, sans-serif;
-$font-dotgothic-stack: "DotGothic16", system-ui, -apple-system, sans-serif;
+$font-heading-stack: "Stack Sans Notch", system-ui, -apple-system, sans-serif;
+$font-body-stack: "Manrope", system-ui, -apple-system, sans-serif;
+$font-mono-stack: "Lekton", Consolas, monospace;
 
 // --- Radius ---
-$radius: 10px;
-$radius-sm: 6px;
+$radius-xs: 3px;
+$radius-sm: 5px;
+$radius: 6px;
+$radius-md: 8px;
+$radius-lg: 10px;
 $radius-code: 4px;
 $radius-pill: 999px;
+$radius-nav: 0 $radius-code $radius-code 0;
 
 // --- Spacing ---
-$space-2xs: 0.15rem;
-$space-xs: 0.25rem;
-$space-sm: 0.35rem;
-$space-md: 0.5rem;
-$space-lg: 0.65rem;
-$space-xl: 0.75rem;
-$space-2xl: 0.85rem;
-$space-3xl: 1rem;
-$space-4xl: 1.1rem;
-$space-5xl: 1.25rem;
-$space-6xl: 1.5rem;
-$space-7xl: 1.75rem;
-$space-8xl: 2rem;
-$space-9xl: 2.5rem;
-$space-10xl: 3rem;
+$space-2xs: 1px;
+$space-xs: 2px;
+$space-sm: 4px;
+$space-md: 6px;
+$space-lg: 8px;
+$space-xl: 10px;
+$space-2xl: 12px;
+$space-3xl: 14px;
+$space-4xl: 16px;
+$space-5xl: 18px;
+$space-6xl: 20px;
+$space-7xl: 22px;
+$space-8xl: 24px;
+$space-9xl: 28px;
+$space-10xl: 30px;
+$space-11xl: 36px;
+$space-12xl: 40px;
+$space-13xl: 44px;
+$space-14xl: 56px;
+$space-15xl: 64px;
+$space-16xl: 80px;
 
 // --- Typography ---
-$line-height-body: 1.7;
-$line-height-tight: 1.3;
-$line-height-heading: 1.2;
-$line-height-subtitle: 1.5;
+$line-height-body: 1.65;
+$line-height-tight: 1.25;
+$line-height-heading: 1.25;
+$line-height-code: 1.7;
+$line-height-code-demo: 1.8;
 
-$font-size-2xs: 0.8rem;
-$font-size-xs: 0.85rem;
-$font-size-sm: 0.88rem;
-$font-size-nav: 0.92rem;
-$font-size-base: 0.95rem;
-$font-size-md: 1.1rem;
-$font-size-lg: 1.25rem;
-$font-size-xl: 1.5rem;
-$font-size-2xl: 1.75rem;
-$font-size-3xl: 2rem;
-$font-size-4xl: 2.5rem;
-$font-size-brand: 24px;
+$font-size-body: 14px;
+$font-size-2xs: 10px;
+$font-size-xs: 11px;
+$font-size-sm: 11.5px;
+$font-size-nav: 12px;
+$font-size-label: 13px;
+$font-size-base: 13.5px;
+$font-size-md: 14.5px;
+$font-size-lg: 15px;
+$font-size-xl: 15.5px;
+$font-size-2xl: 16px;
+$font-size-3xl: 18px;
+$font-size-4xl: 22px;
+$font-size-5xl: 27px;
+$font-size-6xl: 34px;
+$font-size-7xl: 40px;
 
 $font-weight-normal: 400;
 $font-weight-medium: 500;
 $font-weight-semibold: 600;
 $font-weight-bold: 700;
 
-$hero-title-min: 28px;
-$hero-title-fluid: 56px;
-$hero-title-max: 60px;
+$letter-spacing-tight: 0.01em;
+$letter-spacing-label: 0.04em;
+$letter-spacing-wide: 0.06em;
+$letter-spacing-eyebrow: 0.14em;
+$letter-spacing-toc: 0.12em;
 
-$letter-spacing-tight: -0.02em;
+// --- Borders & focus ---
+$border-width: 1px;
+$border-width-accent: 2px;
+$callout-border-width: 3px;
+$focus-outline-width: 2px;
+$focus-outline-offset: 2px;
 
 // --- Z-index ---
 $z-mobile-bar: 15;
 $z-backdrop: 19;
 $z-sidebar: 20;
 
-// --- Effects ---
-$sidebar-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
-$backdrop-overlay: rgba(0, 0, 0, 0.45);
-$transition-sidebar: transform 0.2s ease;
-$border-width: 1px;
-$callout-border-width: 3px;
+// --- Motion ---
+$transition-fast: 0.15s ease;
+$transition-medium: 0.2s ease;
+$reduced-motion-duration: 0.01ms;
 
 // --- Themed colors (CSS custom properties from _themes.scss) ---
 $bg: var(--bg);
+$ink: var(--ink);
 $surface: var(--surface);
 $surface-2: var(--surface-2);
+$surface-raised: var(--surface-raised);
 $text: var(--text);
-$muted: var(--muted);
-$accent: var(--accent);
-$accent-dim: var(--accent-dim);
+$muted: var(--text-muted);
+$text-faint: var(--text-faint);
+$accent: var(--safe);
+$accent-dim: var(--safe-dim);
 $accent-contrast: var(--accent-contrast);
-$warn: var(--warn);
+$safe: var(--safe);
+$safe-dim: var(--safe-dim);
+$risk: var(--risk);
+$risk-dim: var(--risk-dim);
+$warn: var(--risk);
 $border: var(--border);
+$border-soft: var(--border-soft);
 $code-bg: var(--code-bg);
 $header-bg: var(--header-bg);
 $callout-bg: var(--callout-bg);
+$callout-safe-bg: var(--callout-safe-bg);
 $select-bg: var(--select-bg);
+$kw: var(--kw);
+$str: var(--str);
+$nav-hover-bg: var(--nav-hover-bg);
+$nav-active-bg: var(--nav-active-bg);
+$safe-border: var(--safe-border);
+$risk-border: var(--risk-border);
+$brand-mark-fg: var(--brand-mark-fg);
+$pipeline-num-fg: var(--pipeline-num-fg);
+$brand-mark-gradient: var(--brand-mark-gradient);
 
-// --- Gradients & elevation (CSS custom properties from _themes.scss) ---
+// --- Gradients & elevation ---
 $card-gradient: var(--card-gradient);
 $card-shadow: var(--card-shadow);
 $btn-primary-gradient: var(--btn-primary-gradient);
@@ -111,7 +164,7 @@ $btn-secondary-shadow: var(--btn-secondary-shadow);
 $icon-btn-gradient: var(--icon-btn-gradient);
 $icon-btn-gradient-hover: var(--icon-btn-gradient-hover);
 
-// --- Font families (CSS custom properties from :root) ---
+// --- Font families ---
 $font-heading: var(--font-heading);
 $font-body: var(--font-body);
 $font-mono: var(--mono);

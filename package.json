@@ -1,10 +1,10 @@
 {
-  "name": "sql-sp-harness",
+  "name": "sql-debug-harness",
   "displayName": "SQL Debug Harness",
   "description": "Generate safe T-SQL debug harness scripts and analyze stored procedures from VS Code — no Python required.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/DeeprajDeveloper/vscode-sql-sp-harness"
+    "url": "https://github.com/DeeprajDeveloper/vscode-sql-debug-harness"
   },
   "license": "MIT",
   "version": "0.0.1-beta.1",
@@ -13,7 +13,7 @@
     "vscode": "^1.85.0",
     "node": ">=18"
   },
-  "icon": "images/extension-logo-v1.png",
+  "icon": "images/extension-logo.png",
   "categories": [
     "Other",
     "Programming Languages",
@@ -36,20 +36,20 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "bin": {
-    "sql-sp-harness": "./out/cli.js"
+    "sql-debug-harness": "./out/cli.js"
   },
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "sql-sp-harness",
+          "id": "sql-debug-harness",
           "title": "SQL Debug Harness",
           "icon": "images/activitybar-icon.svg"
         }
       ]
     },
     "views": {
-      "sql-sp-harness": [
+      "sql-debug-harness": [
         {
           "id": "sqlSpHarness.sidebar",
           "name": "Workbench",
@@ -215,7 +215,7 @@
             "type": "boolean",
             "default": true,
             "order": 1,
-            "markdownDescription": "Write the step-by-step transform/analyze log to the **SQL SP Harness** output channel."
+            "markdownDescription": "Write the step-by-step transform/analyze log to the **SQL Debug Harness** output channel."
           },
           "spDebug.saveLogFile": {
             "type": "boolean",
@@ -239,14 +239,14 @@
     "watch": "node esbuild.js --watch",
     "test": "jest",
     "vscode:prepublish": "npm run compile",
-    "package": "npm run compile && mkdir -p dist && vsce package --out dist/sql-sp-harness.vsix --allow-missing-repository",
+    "package": "npm run compile && mkdir -p dist && vsce package --out dist/sql-debug-harness.vsix --allow-missing-repository",
     "docs:build": "bash scripts/build-docs.sh",
     "docs:pdf": "bash scripts/build-docs.sh --pdf",
     "docs:serve": "npm run docs:build && npx --yes serve docs -p 8080"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/node": "^20.10.0",
+    "@types/node": "^20.19.43",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "2.32.0",
     "esbuild": "^0.28.1",
