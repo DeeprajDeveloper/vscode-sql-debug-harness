@@ -7,7 +7,7 @@
     "url": "https://github.com/DeeprajDeveloper/vscode-sql-debug-harness"
   },
   "license": "MIT",
-  "version": "0.0.1-beta.1",
+  "version": "0.0.1",
   "publisher": "DeeprajAdhikary",
   "engines": {
     "vscode": "^1.85.0",
@@ -16,16 +16,8 @@
   "icon": "images/extension-logo.png",
   "categories": [
     "Other",
-    "Programming Languages",
-    "Debugging",
-    "SQL",
-    "SQL Server",
-    "Stored Procedures",
-    "Debugging",
-    "Debug",
-    "Debug Harness",
-    "SQL Debug Harness"
-  ],
+    "Programming Languages"
+    ],
   "keywords": [
     "sql",
     "tsql",
