@@ -185,6 +185,20 @@ npm run package
 code --install-extension dist/sql-debug-harness.vsix
 ```
 
+### Publish to the Marketplace
+
+Requires an Azure DevOps PAT with **Marketplace → Manage** (Organization: **All accessible organizations**).
+
+```bash
+export VSCE_PAT="your-token"
+npm run publish              # runs check + tests, then uploads 0.0.x
+npm run publish:dry-run      # package only, no upload
+./scripts/publish-marketplace.sh --skip-tests --yes
+```
+
+After publish, the listing is at:
+[marketplace.visualstudio.com/items?itemName=DeeprajAdhikary.sql-debug-harness](https://marketplace.visualstudio.com/items?itemName=DeeprajAdhikary.sql-debug-harness)
+
 ## Roadmap
 
 - v2 ideas: optional connect-and-run inside `BEGIN…ROLLBACK`, richer control-flow handling, and multi-dialect support (the parser stack already spans multiple SQL dialects).

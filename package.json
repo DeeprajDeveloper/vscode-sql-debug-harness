@@ -284,7 +284,9 @@
     "watch": "node esbuild.js --watch",
     "test": "jest",
     "vscode:prepublish": "npm run compile",
-    "package": "npm run compile && mkdir -p dist && vsce package --out dist/sql-debug-harness.vsix --allow-missing-repository",
+    "package": "npm run compile && mkdir -p dist && vsce package --out dist/sql-debug-harness.vsix",
+    "publish": "bash scripts/publish-marketplace.sh",
+    "publish:dry-run": "bash scripts/publish-marketplace.sh --dry-run",
     "docs:build": "bash scripts/build-docs.sh",
     "docs:pdf": "bash scripts/build-docs.sh --pdf",
     "docs:serve": "npm run docs:build && npx --yes serve docs -p 8080"
