@@ -2,7 +2,7 @@
 
 ![SQL Debug Harness banner](images/VSCODE_BANNER.png)
 
-**Documentation:** [deeprajdeveloper.github.io/vscode-sql-debug-harness](https://deeprajdeveloper.github.io/vscode-sql-debug-harness/) · [Technical design](docs/TECHNICAL_DESIGN.md)
+**Documentation:** [deeprajdeveloper.github.io/vscode-sql-debug-harness](https://deeprajdeveloper.github.io/vscode-sql-debug-harness/) · [Technical design](docs/TECHNICAL_DESIGN.md) · [Change history](docs/change-history.html)
 
 Statically rewrite a T-SQL stored procedure into a **safe debug script**: DML becomes `SELECT` previews, transactions are neutralized, and variables are traced with `PRINT` / `RAISERROR` — so you can run the script without mutating real tables.
 
@@ -46,8 +46,8 @@ END
 
 ```sql
 -- [DBG] Harness: was CREATE PROCEDURE dbo.usp_SimpleDml; set parameter values below.
-DECLARE @Id INT = NULL;  -- TODO: set test value
-DECLARE @Name NVARCHAR(100) = NULL;  -- TODO: set test value
+DECLARE @Id INT = NULL,  -- TODO: set test value
+        @Name NVARCHAR(100) = NULL;  -- TODO: set test value
 BEGIN
     -- [DBG-PREVIEW] Would have executed:
     SELECT N'INSERT to table dbo.Items' AS [DBG_Action], @Id AS [@Id], @Name AS [@Name];
@@ -71,13 +71,26 @@ END
 3. Right-click → **SQL Debug Harness** → **Generate Debug Script**.
 4. Review the harness in the **Workbench** — DML is preview-only; set `DECLARE` values and run against a safe connection.
 
-Optional: **Analyze Procedure** shows Summary / Warnings / Identified in the Workbench beside the source.
+Optional: **Analyze Procedure** shows Summary / Warnings / Identified in the Workbench tab.
+
+---
+
+## What’s new in 0.0.2
+
+- Procedure parameter conversion supports parenthesized lists and `OUTPUT` / `OUT` parameters, and emits one valid comma-separated `DECLARE`.
+- The sidebar tracks recently analyzed and debugged procedures; the Workbench History button opens them through Quick Pick.
+- Identified results are grouped by Kind with collapsible sections.
+- Analysis and Activity Log collapse from their full headers without changing panel order.
+- The Workbench opens as a normal tab, uses horizontally scrolling SQL previews, and has distinct SVG toolbar icons.
+- `spDebug.workbenchToolbarStyle` switches between icons with text, icons only, and text only.
+
+See the full [change history](docs/change-history.html).
 
 ---
 
 ### Open from the sidebar
 
-Click the **SQL Debug Harness** icon in the primary activity bar (left). The Workbench view includes an **Open Workbench** button, plus Analyze / Generate actions in the view title bar.
+Click the **SQL Debug Harness** icon in the primary activity bar (left). The sidebar includes Open Workbench, Analyze, and Generate actions plus grouped **Analyzed** / **Debugged** procedure history.
 
 **Loading SQL:** use **Select File…** in the workbench (Quick Pick of workspace `.sql` files), **Load Active** for the open editor, or right-click a file → **Open in Workbench**.
 
@@ -94,12 +107,12 @@ The **Workbench** shows:
 
 - **Source** — selected text or full `.sql` file (**Select File…** or **Load Active**)
 - **Debug script** — generated harness (when available)
-- **Analysis** — collapsible Summary / Warnings / Identified sections (whole pane can collapse)
+- **Analysis** — Summary / Warnings tabs plus Identified results grouped by Kind
 - **Active log** — step-by-step engine log (collapsible)
 
-Panes are **resizable** (drag the splitters). Collapse state for Analysis / Active log is **remembered**. Source and Debug previews use **T-SQL syntax highlighting** that follows theme colors. Colors follow the **current IDE theme** (light/dark/high-contrast).
+Panes are **resizable** (drag the splitters). Click the full Analysis or Active Log header to collapse it; panel order and collapse state are preserved. Source and Debug previews use **T-SQL syntax highlighting**, theme colors, and horizontal scrolling for long lines.
 
-From the toolbar you can **Analyze**, **Generate Debug**, and **save each artifact individually** (analysis `.txt`, debug `.sql`, log `.log`), or open the debug script in a normal editor tab.
+From the toolbar you can open **History**, **Analyze**, **Generate Debug**, and **save each artifact individually** (analysis `.txt`, debug `.sql`, log `.log`), or open the debug script in a normal editor tab.
 
 Available from the **SQL Debug Harness** right-click submenu on `.sql` files and from the Command Palette. Non-empty editor selections are used when present.
 
@@ -111,6 +124,7 @@ Available from the **SQL Debug Harness** right-click submenu on `.sql` files and
 | `spDebug.logToOutput` | `true` | Show step log in the **SQL Debug Harness** output channel |
 | `spDebug.saveLogFile` | `false` | Also write `<proc>.log` beside the source `.sql` |
 | `spDebug.quietWhenLogging` | `true` | Avoid duplicating progress lines when the step log is enabled |
+| `spDebug.workbenchToolbarStyle` | `iconsAndText` | `iconsAndText`, `iconsOnly`, or `textOnly` |
 
 ---
 

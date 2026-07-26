@@ -3,8 +3,10 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { analyze, generate, type AnalyzeReport } from "./engine";
 import type { SqlSourceContext } from "./sqlSource";
-import { getSpDebugSettings } from "./settings";
+import { getSpDebugSettings, type WorkbenchToolbarStyle } from "./settings";
 import { highlightTsql } from "./sqlHighlight";
+import { recordHistory } from "./history";
+import { showHarnessHistory } from "./harnessSidebar";
 
 export type WorkbenchState = {
   source?: SqlSourceContext;
@@ -16,6 +18,74 @@ export type WorkbenchState = {
 
 let panel: vscode.WebviewPanel | undefined;
 let state: WorkbenchState | undefined;
+let extensionContext: vscode.ExtensionContext | undefined;
+let configListenerRegistered = false;
+
+/** Phosphor-style stroke icons (viewBox 256, round joins) — MIT-inspired geometry. */
+function iconSvg(inner: string): string {
+  return `<svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+
+const TOOLBAR_ICONS = {
+  /** ClockCounterClockwise — recent history */
+  history: iconSvg(
+    `<polyline points="80 96 16 96 16 32"/><path d="M64 64A96 96 0 1 1 48 176"/>`
+  ),
+  /** FolderSimple — browse workspace files */
+  folder: iconSvg(
+    `<path d="M32 208V64a8 8 0 0 1 8-8h53.33a8 8 0 0 1 6.4 3.2l19.2 25.6a8 8 0 0 0 6.4 3.2H216a8 8 0 0 1 8 8v112a8 8 0 0 1-8 8H40a8 8 0 0 1-8-8Z"/>`
+  ),
+  /** FileArrowDown — load active editor */
+  file: iconSvg(
+    `<path d="M200 224H56a8 8 0 0 1-8-8V40a8 8 0 0 1 8-8h96l56 56v128a8 8 0 0 1-8 8Z"/><polyline points="152 32 152 88 208 88"/><line x1="128" y1="120" x2="128" y2="184"/><polyline points="104 160 128 184 152 160"/>`
+  ),
+  /** MagnifyingGlass — analyze */
+  analyze: iconSvg(
+    `<circle cx="116" cy="116" r="76"/><line x1="172" y1="172" x2="224" y2="224"/>`
+  ),
+  /** Bug — generate debug harness */
+  debug: iconSvg(
+    `<circle cx="128" cy="128" r="24"/><path d="M80 104V88a48 48 0 0 1 96 0v16"/><line x1="128" y1="152" x2="128" y2="224"/><line x1="40" y1="88" x2="80" y2="112"/><line x1="216" y1="88" x2="176" y2="112"/><line x1="40" y1="168" x2="80" y2="144"/><line x1="216" y1="168" x2="176" y2="144"/><path d="M88 176a56 56 0 0 0 80 0"/>`
+  ),
+  /** ClipboardText — save analysis report */
+  saveAnalysis: iconSvg(
+    `<path d="M160 40h24a16 16 0 0 1 16 16v152a16 16 0 0 1-16 16H72a16 16 0 0 1-16-16V56a16 16 0 0 1 16-16h24"/><path d="M96 40h64v16a16 16 0 0 1-16 16h-32a16 16 0 0 1-16-16Z"/><line x1="96" y1="128" x2="160" y2="128"/><line x1="96" y1="160" x2="160" y2="160"/><line x1="96" y1="192" x2="128" y2="192"/>`
+  ),
+  /** FileCode — save debug script */
+  saveDebug: iconSvg(
+    `<path d="M200 224H56a8 8 0 0 1-8-8V40a8 8 0 0 1 8-8h96l56 56v128a8 8 0 0 1-8 8Z"/><polyline points="152 32 152 88 208 88"/><polyline points="104 140 80 164 104 188"/><polyline points="152 140 176 164 152 188"/>`
+  ),
+  /** TerminalWindow — save activity log */
+  saveLog: iconSvg(
+    `<rect x="32" y="48" width="192" height="160" rx="16"/><polyline points="72 104 104 128 72 152"/><line x1="128" y1="152" x2="168" y2="152"/>`
+  ),
+  /** ArrowSquareOut — open in editor */
+  open: iconSvg(
+    `<path d="M216 112v96a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8V48a8 8 0 0 1 8-8h96"/><polyline points="144 32 224 32 224 112"/><line x1="112" y1="144" x2="224" y2="32"/>`
+  ),
+} as const;
+
+function toolbarButton(opts: {
+  id: string;
+  label: string;
+  title: string;
+  icon: keyof typeof TOOLBAR_ICONS;
+  style: WorkbenchToolbarStyle;
+  secondary?: boolean;
+  disabled?: boolean;
+}): string {
+  const showIcon = opts.style !== "textOnly";
+  const showText = opts.style !== "iconsOnly";
+  const classes = ["btn", opts.secondary ? "secondary" : "", `toolbar-${opts.style}`]
+    .filter(Boolean)
+    .join(" ");
+  const icon = showIcon ? TOOLBAR_ICONS[opts.icon] : "";
+  const text = showText
+    ? `<span class="btn-label">${escapeHtml(opts.label)}</span>`
+    : "";
+  const disabled = opts.disabled ? "disabled" : "";
+  return `<button type="button" class="${classes}" id="${opts.id}" title="${escapeHtml(opts.title)}" aria-label="${escapeHtml(opts.title)}" ${disabled}>${icon}${text}</button>`;
+}
 
 function escapeHtml(text: string): string {
   return text
@@ -55,6 +125,42 @@ function hasSource(s: WorkbenchState): boolean {
   return Boolean(s.source && s.source.source.trim().length > 0);
 }
 
+function renderIdentifiedGrouped(
+  identified: AnalyzeReport["identified"]
+): string {
+  if (identified.length === 0) {
+    return `<p class="empty-cell">No identifiable data or statements found.</p>`;
+  }
+  const byKind = new Map<string, typeof identified>();
+  for (const row of identified) {
+    const list = byKind.get(row.kind) ?? [];
+    list.push(row);
+    byKind.set(row.kind, list);
+  }
+  const sections = Array.from(byKind.entries())
+    .map(([kind, rows]) => {
+      const items = rows
+        .map((row) => {
+          const detail =
+            row.line !== undefined
+              ? `<button type="button" class="line-link" data-line="${row.line}">${escapeHtml(row.detail)}</button>`
+              : escapeHtml(row.detail);
+          return `<li class="kind-item">${detail}</li>`;
+        })
+        .join("");
+      return `
+        <details class="kind-group" closed>
+          <summary class="kind-summary">
+            <span class="kind-summary__label">${escapeHtml(kind)}</span>
+            <span class="kind-summary__count">${rows.length}</span>
+          </summary>
+          <ul class="kind-list">${items}</ul>
+        </details>`;
+    })
+    .join("");
+  return `<div class="kind-groups">${sections}</div>`;
+}
+
 function renderAnalysisPanel(report: AnalyzeReport | undefined): string {
   if (!report) {
     return `
@@ -88,18 +194,7 @@ function renderAnalysisPanel(report: AnalyzeReport | undefined): string {
           )
           .join("");
 
-  const identifiedRows =
-    report.identified.length === 0
-      ? `<tr><td colspan="2" class="empty-cell">No identifiable data or statements found.</td></tr>`
-      : report.identified
-          .map((row) => {
-            const detail =
-              row.line !== undefined
-                ? `<button type="button" class="line-link" data-line="${row.line}">${escapeHtml(row.detail)}</button>`
-                : escapeHtml(row.detail);
-            return `<tr><td>${escapeHtml(row.kind)}</td><td class="detail">${detail}</td></tr>`;
-          })
-          .join("");
+  const identifiedHtml = renderIdentifiedGrouped(report.identified);
 
   const banner =
     warnings.length > 0
@@ -127,7 +222,7 @@ function renderAnalysisPanel(report: AnalyzeReport | undefined): string {
         <table><thead><tr><th>Type</th><th>Message</th></tr></thead><tbody>${warningRows}</tbody></table>
       </div>
       <div class="tab-panel" data-panel="identified" hidden>
-        <table><thead><tr><th>Kind</th><th>Detail</th></tr></thead><tbody>${identifiedRows}</tbody></table>
+        ${identifiedHtml}
       </div>
     </div>`;
 }
@@ -143,6 +238,24 @@ function buildHtml(s: WorkbenchState): string {
   const hasLog = s.stepLog.length > 0;
   const analysisHtml = renderAnalysisPanel(s.report);
   const logText = hasLog ? escapeHtml(s.stepLog.join("\n")) : "";
+  const toolbarStyle = getSpDebugSettings().workbenchToolbarStyle;
+
+  const btn = (
+    id: string,
+    btnLabel: string,
+    title: string,
+    icon: keyof typeof TOOLBAR_ICONS,
+    opts?: { secondary?: boolean; disabled?: boolean }
+  ) =>
+    toolbarButton({
+      id,
+      label: btnLabel,
+      title,
+      icon,
+      style: toolbarStyle,
+      secondary: opts?.secondary,
+      disabled: opts?.disabled,
+    });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -226,6 +339,10 @@ function buildHtml(s: WorkbenchState): string {
       font: inherit;
       background: var(--btn-bg);
       color: var(--btn-fg);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      line-height: 1;
     }
     .btn:hover:not(:disabled) { background: var(--btn-hover); }
     .btn:focus-visible { outline: 1px solid var(--focus); outline-offset: 1px; }
@@ -235,6 +352,16 @@ function buildHtml(s: WorkbenchState): string {
     }
     .btn.secondary:hover:not(:disabled) { background: var(--btn2-hover); }
     .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      display: block;
+    }
+    .btn.toolbar-iconsOnly {
+      padding: 6px 8px;
+    }
+    .btn.toolbar-iconsOnly .btn-label { display: none; }
     .status { font-size: 0.85em; color: var(--muted); }
 
     .workspace {
@@ -288,11 +415,19 @@ function buildHtml(s: WorkbenchState): string {
       font-weight: 600;
       flex-shrink: 0;
     }
+    .pane-header.is-collapsible {
+      cursor: pointer;
+      user-select: none;
+    }
+    .pane-header.is-collapsible:hover {
+      background: var(--list-hover);
+    }
     .pane-body {
       flex: 1;
       overflow: auto;
       padding: 8px 10px;
       min-height: 0;
+      min-width: 0;
       background: var(--bg);
     }
 
@@ -323,28 +458,11 @@ function buildHtml(s: WorkbenchState): string {
       min-height: 0 !important;
       max-height: none !important;
     }
-    .workspace-dock {
-      display: flex;
-      flex-direction: column;
-      flex: 0 0 auto;
-      border-top: 1px solid var(--border);
-      background: var(--pane-bg);
+    .row-collapsed > .pane > .pane-header {
+      border-bottom: none;
     }
-    .workspace-dock:empty { display: none; }
-    .dock-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 6px 10px;
-      border-bottom: 1px solid var(--border);
-      font-weight: 600;
-      cursor: pointer;
-      background: var(--header-bg);
-    }
-    .dock-item:last-child { border-bottom: none; }
-    .dock-item:hover { background: var(--list-hover); }
-    .dock-item .dock-hint { font-weight: 400; color: var(--muted); font-size: 0.85em; }
+    /* Keep collapsed Analysis / Log bars in document order (no dock jump). */
+    .workspace-dock { display: none !important; }
 
     .collapse-btn {
       border: none;
@@ -355,9 +473,66 @@ function buildHtml(s: WorkbenchState): string {
       padding: 2px 6px;
       border-radius: var(--radius);
       line-height: 1;
+      pointer-events: none;
     }
-    .collapse-btn:hover { background: var(--list-hover); color: var(--fg); }
-    .collapse-btn:focus-visible { outline: 1px solid var(--focus); }
+    .pane-header.is-collapsible:hover .collapse-btn { color: var(--fg); }
+
+    .kind-groups {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .kind-group {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--pane-bg);
+      overflow: hidden;
+    }
+    .kind-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 10px;
+      cursor: pointer;
+      list-style: none;
+      font-weight: 600;
+      background: var(--header-bg);
+      user-select: none;
+    }
+    .kind-summary__label {
+      flex: 1 1 auto;
+      text-align: left;
+      min-width: 0;
+    }
+    .kind-summary::-webkit-details-marker { display: none; }
+    .kind-summary::before {
+      content: "▾";
+      color: var(--muted);
+      font-size: 0.85em;
+      margin-right: 2px;
+      flex-shrink: 0;
+    }
+    .kind-group:not([open]) > .kind-summary::before { content: "▸"; }
+    .kind-summary:hover { background: var(--list-hover); }
+    .kind-summary__count {
+      font-size: 0.8em;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: var(--code-bg);
+      color: var(--fg);
+    }
+    .kind-list {
+      margin: 0;
+      padding: 6px 10px 8px 28px;
+      list-style: disc;
+    }
+    .kind-item {
+      margin: 4px 0;
+      color: var(--muted);
+    }
+    .kind-item .line-link { text-align: left; }
 
     .analysis-tabs {
       display: flex;
@@ -417,10 +592,13 @@ function buildHtml(s: WorkbenchState): string {
       margin: 0;
       font-family: var(--mono);
       font-size: var(--efs);
-      white-space: pre-wrap;
-      word-break: break-word;
+      white-space: pre;
       line-height: 1.45;
       color: var(--fg);
+      display: block;
+      width: max-content;
+      min-width: 100%;
+      box-sizing: border-box;
     }
     pre.log {
       background: var(--code-bg);
@@ -437,12 +615,20 @@ function buildHtml(s: WorkbenchState): string {
       background: var(--code-bg);
       border-radius: var(--radius);
       border: 1px solid var(--border);
-      overflow: auto;
+      /* Grow to longest line; pane-body owns visible H/V scrollbars. */
+      display: block;
+      width: max-content;
+      min-width: 100%;
+      box-sizing: border-box;
+      overflow: visible;
     }
     .code-line {
       display: flex;
       align-items: flex-start;
       min-height: 1.45em;
+      width: max-content;
+      min-width: 100%;
+      box-sizing: border-box;
     }
     .code-line:hover { background: var(--list-hover); }
     .code-line .ln {
@@ -455,13 +641,14 @@ function buildHtml(s: WorkbenchState): string {
       border-right: 1px solid var(--border);
       background: var(--pane-bg);
       opacity: 0.85;
+      position: sticky;
+      left: 0;
+      z-index: 1;
     }
     .code-line .lc {
-      flex: 1;
-      min-width: 0;
+      flex: 0 0 auto;
       padding: 0 10px;
-      white-space: pre-wrap;
-      word-break: break-word;
+      white-space: pre;
       font-family: inherit;
       font-size: inherit;
       background: transparent;
@@ -509,17 +696,18 @@ function buildHtml(s: WorkbenchState): string {
   <div class="toolbar">
     <div class="toolbar-left">
       <span class="file-label" title="${label}">${label}</span>
-      <button type="button" class="btn secondary" id="btn-browse" title="Select a .sql file from the workspace">Select File …</button>
-      <button type="button" class="btn secondary" id="btn-load-active" title="Load the active SQL editor">Load Active SQL</button>
-      <button type="button" class="btn" id="btn-analyze" ${loaded ? "" : "disabled"}>Analyze Script</button>
-      <button type="button" class="btn" id="btn-generate" ${loaded ? "" : "disabled"}>Generate Debug Script</button>
+      ${btn("btn-history", "History", "Browse recently analyzed / debugged procedures", "history", { secondary: true })}
+      ${btn("btn-browse", "Select File …", "Select a .sql file from the workspace", "folder", { secondary: true })}
+      ${btn("btn-load-active", "Load Active SQL", "Load the active SQL editor", "file", { secondary: true })}
+      ${btn("btn-analyze", "Analyze Script", "Analyze the loaded procedure", "analyze", { disabled: !loaded })}
+      ${btn("btn-generate", "Generate Debug Script", "Generate a safe debug harness script", "debug", { disabled: !loaded })}
     </div>
     <div class="toolbar-right">
       <span class="status">Saving Options:</span>
-      <button type="button" class="btn secondary" id="btn-save-analysis" ${hasAnalysis ? "" : "disabled"}>Analysis Report</button>
-      <button type="button" class="btn secondary" id="btn-save-debug" ${hasDebug ? "" : "disabled"}>Debug Script</button>
-      <button type="button" class="btn secondary" id="btn-save-log" ${hasLog ? "" : "disabled"}>Log File</button>
-      <button type="button" class="btn secondary" id="btn-open-debug" ${hasDebug ? "" : "disabled"}>Open Debug Script</button>
+      ${btn("btn-save-analysis", "Analysis Report", "Save analysis report", "saveAnalysis", { secondary: true, disabled: !hasAnalysis })}
+      ${btn("btn-save-debug", "Debug Script", "Save generated debug script", "saveDebug", { secondary: true, disabled: !hasDebug })}
+      ${btn("btn-save-log", "Log File", "Save activity log", "saveLog", { secondary: true, disabled: !hasLog })}
+      ${btn("btn-open-debug", "Open Debug Script", "Open debug script in an editor tab", "open", { secondary: true, disabled: !hasDebug })}
     </div>
   </div>
 
@@ -552,11 +740,11 @@ function buildHtml(s: WorkbenchState): string {
 
     <div class="row-analysis" id="row-analysis">
       <section class="pane" style="flex:1">
-        <div class="pane-header">
+        <div class="pane-header is-collapsible" id="header-analysis" role="button" tabindex="0" aria-controls="analysis-body" title="Click to collapse or expand Analysis">
           <span>Analysis Report</span>
           <span style="display:flex;align-items:center;gap:8px">
             <span class="status">use tabs below</span>
-            <button type="button" class="collapse-btn" id="btn-collapse-analysis" title="Collapse or expand Analysis" aria-expanded="true">▾</button>
+            <span class="collapse-btn" id="btn-collapse-analysis" aria-hidden="true">▾</span>
           </span>
         </div>
         <div class="pane-body" id="analysis-body">${analysisHtml}</div>
@@ -567,11 +755,11 @@ function buildHtml(s: WorkbenchState): string {
 
     <div class="row-log" id="row-log">
       <section class="pane" style="flex:1">
-        <div class="pane-header">
+        <div class="pane-header is-collapsible" id="header-log" role="button" tabindex="0" aria-controls="log-body" title="Click to collapse or expand Active log">
           <span>Activity Log (Steps)</span>
           <span style="display:flex;align-items:center;gap:8px">
             <span class="status">${s.stepLog.length} line(s)</span>
-            <button type="button" class="collapse-btn" id="btn-collapse-log" title="Collapse or expand Active log" aria-expanded="true">▾</button>
+            <span class="collapse-btn" id="btn-collapse-log" aria-hidden="true">▾</span>
           </span>
         </div>
         <div class="pane-body" id="log-body">
@@ -584,7 +772,7 @@ function buildHtml(s: WorkbenchState): string {
       </section>
     </div>
 
-    <div class="workspace-dock" id="workspace-dock" aria-label="Collapsed panels"></div>
+    <div class="workspace-dock" id="workspace-dock" aria-hidden="true"></div>
   </div>
 
   <script>
@@ -595,6 +783,7 @@ function buildHtml(s: WorkbenchState): string {
       vscode.postMessage(Object.assign({ type }, extra || {}));
     }
 
+    document.getElementById('btn-history').addEventListener('click', () => post('showHistory'));
     document.getElementById('btn-browse').addEventListener('click', () => post('browse'));
     document.getElementById('btn-load-active').addEventListener('click', () => post('loadActive'));
     document.getElementById('btn-analyze').addEventListener('click', () => post('analyze'));
@@ -655,7 +844,8 @@ function buildHtml(s: WorkbenchState): string {
     const splitAnalysisLog = document.getElementById('split-analysis-log');
     const btnCollapseAnalysis = document.getElementById('btn-collapse-analysis');
     const btnCollapseLog = document.getElementById('btn-collapse-log');
-    const dock = document.getElementById('workspace-dock');
+    const headerAnalysis = document.getElementById('header-analysis');
+    const headerLog = document.getElementById('header-log');
     const SPLIT = 5;
     const MIN_ROW = 72;
     const HEADER_H = 36;
@@ -680,15 +870,16 @@ function buildHtml(s: WorkbenchState): string {
     function defaultHeights() {
       const total = workspaceInnerHeight();
       let splits = 0;
-      if (!analysisCollapsed || !logCollapsed) splits += 1;
-      if (!analysisCollapsed && !logCollapsed) splits += 1;
-      const dockH = (analysisCollapsed ? HEADER_H : 0) + (logCollapsed ? HEADER_H : 0);
-      const usable = Math.max(MIN_ROW, total - splits * SPLIT - dockH);
+      // Splitters stay between rows even when collapsed (bars remain in place)
+      splits += 2;
+      const collapsedBars =
+        (analysisCollapsed ? HEADER_H : 0) + (logCollapsed ? HEADER_H : 0);
+      const usable = Math.max(MIN_ROW, total - splits * SPLIT - collapsedBars);
       return {
         sql: Math.round(usable * DEFAULT_SQL_RATIO),
         analysis: Math.round(usable * DEFAULT_ANALYSIS_RATIO),
         usable,
-        dockH,
+        dockH: collapsedBars,
         splits,
       };
     }
@@ -706,54 +897,31 @@ function buildHtml(s: WorkbenchState): string {
       vscode.setState(st);
     }
 
-    function rebuildDock() {
-      dock.innerHTML = '';
-      if (analysisCollapsed) {
-        const item = document.createElement('div');
-        item.className = 'dock-item';
-        item.innerHTML = '<span>Analysis</span><span class="dock-hint">Click to expand</span>';
-        item.addEventListener('click', () => toggleCollapse('analysis'));
-        dock.appendChild(item);
-      }
-      if (logCollapsed) {
-        const item = document.createElement('div');
-        item.className = 'dock-item';
-        item.innerHTML = '<span>Active log</span><span class="dock-hint">Click to expand</span>';
-        item.addEventListener('click', () => toggleCollapse('log'));
-        dock.appendChild(item);
-      }
-    }
-
     function applyCollapseUi() {
       rowAnalysis.classList.toggle('row-collapsed', analysisCollapsed);
       rowLog.classList.toggle('row-collapsed', logCollapsed);
-      rowAnalysis.style.display = analysisCollapsed ? 'none' : 'flex';
-      rowLog.style.display = logCollapsed ? 'none' : 'flex';
+      // Keep rows in place — never display:none (that made Log jump to the top).
+      rowAnalysis.style.display = 'flex';
+      rowLog.style.display = 'flex';
 
-      // Splitters: sql↔next expanded; analysis↔log only if both expanded
-      const anyExpanded = !analysisCollapsed || !logCollapsed;
-      splitTopAnalysis.classList.toggle('hidden', !anyExpanded);
-      splitAnalysisLog.classList.toggle('hidden', analysisCollapsed || logCollapsed);
+      splitTopAnalysis.classList.toggle('hidden', false);
+      splitAnalysisLog.classList.toggle('hidden', false);
 
       btnCollapseAnalysis.textContent = analysisCollapsed ? '▸' : '▾';
-      btnCollapseAnalysis.setAttribute('aria-expanded', analysisCollapsed ? 'false' : 'true');
-      btnCollapseAnalysis.title = analysisCollapsed ? 'Expand Analysis' : 'Collapse Analysis';
+      headerAnalysis.setAttribute('aria-expanded', analysisCollapsed ? 'false' : 'true');
+      headerAnalysis.title = analysisCollapsed ? 'Expand Analysis' : 'Collapse Analysis';
       btnCollapseLog.textContent = logCollapsed ? '▸' : '▾';
-      btnCollapseLog.setAttribute('aria-expanded', logCollapsed ? 'false' : 'true');
-      btnCollapseLog.title = logCollapsed ? 'Expand Active log' : 'Collapse Active log';
-
-      rebuildDock();
+      headerLog.setAttribute('aria-expanded', logCollapsed ? 'false' : 'true');
+      headerLog.title = logCollapsed ? 'Expand Active log' : 'Collapse Active log';
     }
 
     function applyLayout(sqlH, analysisH) {
       applyCollapseUi();
       const defs = defaultHeights();
       const total = workspaceInnerHeight();
-      const dockH = defs.dockH;
-      let splits = 0;
-      if (!analysisCollapsed || !logCollapsed) splits += 1;
-      if (!analysisCollapsed && !logCollapsed) splits += 1;
-      const available = total - splits * SPLIT - dockH;
+      const collapsedBars = defs.dockH;
+      const splits = 2;
+      const available = total - splits * SPLIT - collapsedBars;
 
       const expandedCount = (!analysisCollapsed ? 1 : 0) + (!logCollapsed ? 1 : 0);
       let sql = clamp(sqlH, MIN_ROW, available - (expandedCount > 0 ? MIN_ROW * Math.min(expandedCount, 1) : 0));
@@ -779,10 +947,23 @@ function buildHtml(s: WorkbenchState): string {
         rowAnalysis.style.flex = '1 1 auto';
         rowAnalysis.style.height = 'auto';
         rowAnalysis.style.minHeight = MIN_ROW + 'px';
+        rowLog.style.flex = '0 0 auto';
+        rowLog.style.height = HEADER_H + 'px';
+        rowLog.style.minHeight = HEADER_H + 'px';
       } else if (!logCollapsed) {
+        rowAnalysis.style.flex = '0 0 auto';
+        rowAnalysis.style.height = HEADER_H + 'px';
+        rowAnalysis.style.minHeight = HEADER_H + 'px';
         rowLog.style.flex = '1 1 auto';
         rowLog.style.height = 'auto';
         rowLog.style.minHeight = MIN_ROW + 'px';
+      } else {
+        rowAnalysis.style.flex = '0 0 auto';
+        rowAnalysis.style.height = HEADER_H + 'px';
+        rowAnalysis.style.minHeight = HEADER_H + 'px';
+        rowLog.style.flex = '0 0 auto';
+        rowLog.style.height = HEADER_H + 'px';
+        rowLog.style.minHeight = HEADER_H + 'px';
       }
     }
 
@@ -822,19 +1003,21 @@ function buildHtml(s: WorkbenchState): string {
       } else {
         logCollapsed = !logCollapsed;
       }
-      // Expanding always restores default panel sizes
       layoutFromDefaults();
       persistLayout();
     }
 
-    btnCollapseAnalysis.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleCollapse('analysis');
-    });
-    btnCollapseLog.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleCollapse('log');
-    });
+    function bindHeaderCollapse(header, which) {
+      header.addEventListener('click', () => toggleCollapse(which));
+      header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleCollapse(which);
+        }
+      });
+    }
+    bindHeaderCollapse(headerAnalysis, 'analysis');
+    bindHeaderCollapse(headerLog, 'log');
 
     layoutFromDefaults();
     window.addEventListener('resize', () => {
@@ -961,7 +1144,7 @@ async function saveTextDialog(
     Buffer.from(content.endsWith("\n") ? content : content + "\n", "utf8")
   );
   vscode.window.showInformationMessage(
-    `SQL SP Harness: saved ${path.basename(target.fsPath)}`
+    `SQL Debug Harness: saved ${path.basename(target.fsPath)}`
   );
 }
 
@@ -986,8 +1169,8 @@ function refreshPanel(): void {
   const label = state.source?.label ?? "Workbench";
   panel.title =
     state.source && hasSource(state)
-      ? `SQL SP Harness: ${state.source.label}`
-      : "SQL SP Harness";
+      ? `SQL Debug Harness: ${state.source.label}`
+      : "SQL Debug Harness";
   panel.webview.html = buildHtml(state);
 }
 
@@ -998,7 +1181,7 @@ async function readSqlFromUri(uri: vscode.Uri): Promise<string> {
 
 async function loadSourceFromUri(uri: vscode.Uri): Promise<void> {
   if (path.extname(uri.fsPath).toLowerCase() !== ".sql") {
-    vscode.window.showWarningMessage("SQL SP Harness: please choose a .sql file.");
+    vscode.window.showWarningMessage("SQL Debug Harness: please choose a .sql file.");
     return;
   }
   // Read via filesystem — do not openTextDocument/showTextDocument (that steals focus into the editor).
@@ -1029,14 +1212,14 @@ export async function loadSqlFileIntoWorkbench(
     state = { stepLog: [] };
   }
   await loadSourceFromUri(uri);
-  panel?.reveal(vscode.ViewColumn.Beside);
+  panel?.reveal(vscode.ViewColumn.Active);
 }
 
 async function loadActiveEditorIntoWorkbench(): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.languageId !== "sql") {
     vscode.window.showWarningMessage(
-      "SQL SP Harness: activate a .sql editor tab first, or use Select File…"
+      "SQL Debug Harness: activate a .sql editor tab first, or use Select File…"
     );
     return;
   }
@@ -1069,7 +1252,7 @@ async function browseForSqlFile(): Promise<void> {
   );
   if (uris.length === 0) {
     vscode.window.showWarningMessage(
-      "SQL SP Harness: no .sql files found in the workspace."
+      "SQL Debug Harness: no .sql files found in the workspace."
     );
     return;
   }
@@ -1098,15 +1281,30 @@ async function browseForSqlFile(): Promise<void> {
 }
 
 function ensurePanel(context: vscode.ExtensionContext): vscode.WebviewPanel {
+  extensionContext = context;
+  if (!configListenerRegistered) {
+    configListenerRegistered = true;
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (
+          e.affectsConfiguration("spDebug.workbenchToolbarStyle") &&
+          panel &&
+          state
+        ) {
+          refreshPanel();
+        }
+      })
+    );
+  }
   if (panel) {
-    panel.reveal(vscode.ViewColumn.Beside);
+    panel.reveal(vscode.ViewColumn.Active);
     return panel;
   }
 
   panel = vscode.window.createWebviewPanel(
     "sqlSpHarness.workbench",
-    "SQL SP Harness",
-    vscode.ViewColumn.Beside,
+    "SQL Debug Harness",
+    vscode.ViewColumn.Active,
     {
       enableScripts: true,
       retainContextWhenHidden: true,
@@ -1191,6 +1389,11 @@ function ensurePanel(context: vscode.ExtensionContext): vscode.WebviewPanel {
             await gotoLine(state.source.sourceUri, message.line);
           }
           break;
+        case "showHistory":
+          if (extensionContext) {
+            await showHarnessHistory(extensionContext);
+          }
+          break;
       }
     }
   );
@@ -1202,7 +1405,7 @@ function ensurePanel(context: vscode.ExtensionContext): vscode.WebviewPanel {
 async function runAnalyzeInWorkbench(): Promise<void> {
   if (!state || !hasSource(state) || !state.source) {
     vscode.window.showWarningMessage(
-      "SQL SP Harness: load a .sql file first (Select File… or Load Active)."
+      "SQL Debug Harness: load a .sql file first (Select File… or Load Active)."
     );
     return;
   }
@@ -1210,12 +1413,19 @@ async function runAnalyzeInWorkbench(): Promise<void> {
   state.report = report;
   state.stepLog = report.stepLog;
   state.lastAction = "analyze";
+  if (extensionContext) {
+    recordHistory(extensionContext, {
+      label: state.source.label,
+      uri: state.source.sourceUri,
+      action: "analyzed",
+    });
+  }
   refreshPanel();
 
   const warnings = realWarnings(report);
   if (warnings.length) {
     vscode.window.showWarningMessage(
-      `SQL SP Harness: ${warnings.length} warning(s) — see Analysis › Warnings.`
+      `SQL Debug Harness: ${warnings.length} warning(s) — see Analysis › Warnings.`
     );
   }
 }
@@ -1223,7 +1433,7 @@ async function runAnalyzeInWorkbench(): Promise<void> {
 async function runGenerateInWorkbench(): Promise<void> {
   if (!state || !hasSource(state) || !state.source) {
     vscode.window.showWarningMessage(
-      "SQL SP Harness: load a .sql file first (Select File… or Load Active)."
+      "SQL Debug Harness: load a .sql file first (Select File… or Load Active)."
     );
     return;
   }
@@ -1232,11 +1442,18 @@ async function runGenerateInWorkbench(): Promise<void> {
   state.debugSql = result.sql;
   state.stepLog = result.stepLog;
   state.lastAction = "generate";
+  if (extensionContext) {
+    recordHistory(extensionContext, {
+      label: state.source.label,
+      uri: state.source.sourceUri,
+      action: "debugged",
+    });
+  }
   refreshPanel();
 
   if (result.stats.warnings.length) {
     vscode.window.showWarningMessage(
-      "SQL SP Harness: debug script generated with warnings — review Active log / Analysis."
+      "SQL Debug Harness: debug script generated with warnings — review Active log / Analysis."
     );
   }
 }

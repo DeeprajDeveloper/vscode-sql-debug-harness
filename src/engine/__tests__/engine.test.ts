@@ -123,6 +123,65 @@ describe("pass-through and errors", () => {
   });
 });
 
+describe("CREATE PROCEDURE → DECLARE", () => {
+  test("multiple params become one comma-separated DECLARE (no mid-list semicolons)", () => {
+    const sql = `
+CREATE PROCEDURE dbo.usp_Multi
+    @Id INT,
+    @Name NVARCHAR(100)
+AS
+BEGIN
+    SELECT @Id, @Name;
+END
+`.trim();
+    const result = generate(sql);
+    expect(result.sql).toMatch(/DECLARE @Id INT = NULL,/);
+    expect(result.sql).toMatch(/@Name NVARCHAR\(100\) = NULL;/);
+    expect(result.sql).not.toMatch(/DECLARE @Id INT = NULL;\s*\n\s*DECLARE @Name/);
+    expect(result.sql).not.toMatch(/INT; =/);
+  });
+
+  test("OUTPUT / OUT params are stripped from type and annotated", () => {
+    const sql = `
+CREATE PROCEDURE dbo.usp_WithOut
+(
+    @InId INT,
+    @OutCount INT OUTPUT,
+    @OutFlag BIT = 0 OUT
+)
+AS
+BEGIN
+    SET @OutCount = 1;
+END
+`.trim();
+    const result = generate(sql);
+    expect(result.sql).toMatch(/DECLARE @InId INT = NULL,/);
+    expect(result.sql).toMatch(/@OutCount INT = NULL,/);
+    expect(result.sql).toMatch(/@OutFlag BIT = 0;/);
+    expect(result.sql).toMatch(/-- OUTPUT/);
+    expect(result.sql).not.toMatch(/INT OUTPUT\s*=/);
+    expect(result.sql).not.toMatch(/=\s*0\s+OUT\b/i);
+    expect(result.sql).not.toContain("(no parameters)");
+  });
+
+  test("trailing semicolons on param lines do not leak into DECLARE", () => {
+    const sql = `
+CREATE PROCEDURE dbo.usp_Semi
+    @A INT;,
+    @B VARCHAR(20);
+AS
+BEGIN
+    SELECT 1;
+END
+`.trim();
+    const result = generate(sql);
+    expect(result.sql).toMatch(/DECLARE @A INT = NULL,/);
+    expect(result.sql).toMatch(/@B VARCHAR\(20\) = NULL;/);
+    expect(result.sql).not.toMatch(/INT; =/);
+    expect(result.sql).not.toMatch(/VARCHAR\(20\); =/);
+  });
+});
+
 describe("analyze report shape", () => {
   test("summary includes DML counts", () => {
     const report = analyze(readFixture("simple_dml.sql"));

@@ -63,7 +63,7 @@ export const CREATE_PROC =
   /^\s*CREATE\s+(?:OR\s+ALTER\s+)?PROC(?:EDURE)?\s+(\S+)/i;
 export const CREATE_PROC_INLINE =
   /^\s*CREATE\s+(?:OR\s+ALTER\s+)?PROC(?:EDURE)?\s+(\S+)\s+(.+)$/i;
-export const AS_LINE = /^\s*AS\s*(?:BEGIN)?\s*;?\s*$/i;
+export const AS_LINE = /^\s*(?:\)\s*)?AS\s*(?:BEGIN)?\s*;?\s*$/i;
 export const PROC_PARAM_WITH_DEFAULT = /^(@\w+)\s+(.+)\s+=\s*(.+)$/i;
 export const PROC_PARAM_PLAIN = /^(@\w+)\s+(.+)$/i;
 export const AS_BEGIN_REST = /^\s*AS\s+BEGIN\s*(.*)$/i;

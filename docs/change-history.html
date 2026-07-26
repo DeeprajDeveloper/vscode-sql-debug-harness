@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta
+			name="description"
+			content="SQL Debug Harness release history and notable changes."
+		/>
+		<title>SQL Debug Harness | Change History</title>
+		<link rel="icon" type="image/png" href="./images/extension-logo.png" />
+		<script>
+			(function () {
+				var key = "vscode-sql-debug-harness-theme";
+				var stored = localStorage.getItem(key);
+				var theme =
+					stored === "light" || stored === "dark"
+						? stored
+						: window.matchMedia("(prefers-color-scheme: light)").matches
+							? "light"
+							: "dark";
+				document.documentElement.setAttribute("data-theme", theme);
+			})();
+		</script>
+		<link rel="stylesheet" href="./scss/css/styles.css" />
+	</head>
+	<body>
+		<div class="shell">
+			<div class="mobile-bar">
+				<a class="brand is-compact" href="index.html">
+					<img class="brand-logo" src="./images/extension-logo.png" alt="" />
+					<span class="brand-name">sql-debug-harness</span>
+				</a>
+				<button
+					type="button"
+					class="mobile-toggle"
+					id="tocToggle"
+					aria-expanded="false"
+					aria-controls="sidebar"
+				>
+					Contents
+				</button>
+			</div>
+			<div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+
+			<aside class="sidebar" id="sidebar" aria-label="Change history navigation">
+				<a class="brand" href="index.html">
+					<img class="brand-logo" src="./images/extension-logo.png" alt="" />
+					<span class="brand-name">sql-debug-harness</span>
+				</a>
+				<p class="brand-sub" id="package-version">
+					<span class="sidebar-version__value">v0.0.2</span>
+				</p>
+
+				<div class="toc-group">
+					<p class="toc-label">Other Content</p>
+					<a class="navlink" data-target="index" href="index.html">
+						<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M19 12H5M12 19l-7-7 7-7" />
+						</svg>
+						User documentation
+					</a>
+					<a class="navlink" data-target="technical-design" href="technical-design.html">
+						<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+							<polyline points="14 2 14 8 20 8" />
+							<path d="M8 13h8M8 17h5" />
+						</svg>
+						Technical design
+					</a>
+					<a
+						class="navlink"
+						href="https://marketplace.visualstudio.com/items?itemName=DeeprajAdhikary.sql-debug-harness"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+							<polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+							<line x1="12" y1="22.08" x2="12" y2="12"/>
+						</svg>
+						Marketplace
+					</a>
+				</div>
+
+				<nav aria-label="Release history">
+					<div class="toc-group">
+						<p class="toc-label">Change history</p>
+						<a class="navlink" href="#v0-0-2" data-target="v0-0-2">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>
+							0.0.2
+						</a>
+						<a class="navlink" href="#v0-0-1" data-target="v0-0-1">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+							0.0.1
+						</a>
+					</div>
+				</nav>
+
+				<div class="sidebar-footer">
+					<div class="sidebar-actions">
+						<a
+							class="sidebar-btn"
+							href="https://marketplace.visualstudio.com/items?itemName=DeeprajAdhikary.sql-debug-harness"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="View extension on Visual Studio Marketplace"
+							title="Visual Studio Marketplace"
+						>
+							<svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+								<polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+								<line x1="12" y1="22.08" x2="12" y2="12"/>
+							</svg>
+						</a>
+						<a
+							class="sidebar-btn"
+							href="https://github.com/DeeprajDeveloper/vscode-sql-debug-harness/blob/main/CHANGELOG.md"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="View raw changelog"
+							title="Raw changelog"
+						>
+							<svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+								<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+								<polyline points="14 2 14 8 20 8"/>
+								<path d="M8 13h8M8 17h5"/>
+							</svg>
+						</a>
+						<a
+							class="sidebar-btn"
+							href="https://github.com/DeeprajDeveloper/vscode-sql-debug-harness"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="View extension on GitHub"
+							title="GitHub repository"
+						>
+							<svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+								<path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.26.82-.577 0-.285-.01-1.04-.015-2.04-3.338.726-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.757-1.333-1.757-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.238 1.84 1.238 1.07 1.835 2.807 1.305 3.492.998.108-.776.418-1.305.76-1.605-2.665-.303-5.467-1.333-5.467-5.932 0-1.31.468-2.382 1.236-3.222-.124-.303-.536-1.523.117-3.176 0 0 1.008-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.29-1.552 3.297-1.23 3.297-1.23.655 1.653.243 2.873.12 3.176.77.84 1.235 1.912 1.235 3.222 0 4.61-2.807 5.625-5.48 5.922.43.372.814 1.103.814 2.222 0 1.606-.015 2.902-.015 3.297 0 .32.216.694.825.576C20.565 21.796 24 17.297 24 12c0-6.63-5.37-12-12-12z"/>
+							</svg>
+						</a>
+						<button
+							type="button"
+							class="sidebar-btn"
+							id="theme-toggle"
+							aria-label="Switch to light theme"
+							title="Switch to light theme"
+							aria-pressed="false"
+						>
+							<svg class="theme-icon theme-icon--sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm0-16a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 18a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1zM4.222 5.636a1 1 0 0 1 1.414 0l.707.707A1 1 0 1 1 4.93 7.757l-.707-.707a1 1 0 0 1 0-1.414zm12.728 12.728a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414zM1 13a1 1 0 1 1 0-2h1a1 1 0 1 1 0 2H1zm18 0a1 1 0 1 1 0-2h1a1 1 0 1 1 0 2h-1zM4.222 18.364a1 1 0 0 1 0-1.414l.707-.707a1 1 0 1 1 1.414 1.414l-.707.707a1 1 0 0 1-1.414 0zm12.728-12.728a1 1 0 0 1 0-1.414l.707-.707a1 1 0 0 1 1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414z"/>
+							</svg>
+							<svg class="theme-icon theme-icon--moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+							</svg>
+						</button>
+					</div>
+					<span>MIT · Not affiliated with Microsoft</span>
+				</div>
+			</aside>
+
+			<main class="content">
+				<div class="content-inner">
+					<p class="eyebrow">Release notes</p>
+					<h1>Change history</h1>
+					<p class="lede">
+						A release-by-release record of features, fixes, and behavior changes in SQL Debug Harness.
+					</p>
+
+					<section id="v0-0-2">
+						<h2>0.0.2 <span class="muted">— 2026-07-25</span></h2>
+						<div class="callout callout-safe">
+							<p class="callout-title">Current release</p>
+							<p>
+								This release improves enterprise procedure parameters, adds procedure history,
+								and refines the Workbench layout and controls.
+							</p>
+						</div>
+
+						<h3>Added</h3>
+						<ul>
+							<li>Workspace-scoped history for recently analyzed and debugged stored procedures.</li>
+							<li>Workbench History picker for reopening recent procedures.</li>
+							<li>Grouped, collapsible Identified results by Kind.</li>
+							<li>Distinct SVG icons for each Workbench toolbar action.</li>
+							<li>
+								<code class="inline">spDebug.workbenchToolbarStyle</code> with
+								<code class="inline">iconsAndText</code>, <code class="inline">iconsOnly</code>,
+								and <code class="inline">textOnly</code>.
+							</li>
+						</ul>
+
+						<h3>Changed</h3>
+						<ul>
+							<li>
+								Procedure parameters generate one comma-separated <code class="inline">DECLARE</code>.
+							</li>
+							<li>Parenthesized parameter lists and procedure output parameters are supported.</li>
+							<li>The Workbench opens as a normal tab in the active editor group.</li>
+							<li>Analysis and Activity Log collapse from their full headers without reordering.</li>
+							<li>Long SQL and log lines remain unwrapped and scroll horizontally.</li>
+						</ul>
+
+						<h3>Fixed</h3>
+						<ul>
+							<li>Invalid semicolons between generated parameter declarations.</li>
+							<li>Invalid <code class="inline">OUTPUT</code> / <code class="inline">OUT</code> tokens in declarations.</li>
+							<li>Parenthesized headers being interpreted as having no parameters.</li>
+							<li>Identified accordions rendering horizontally.</li>
+							<li>Activity Log moving when Analysis was collapsed.</li>
+							<li>History opening the activity-bar sidebar and unavailable SQL horizontal scrolling.</li>
+						</ul>
+					</section>
+
+					<hr class="section-divider" />
+
+					<section id="v0-0-1">
+						<h2>0.0.1 <span class="muted">— 2026-07-19</span></h2>
+						<p>
+							Initial release of the standalone VS Code extension and optional CLI.
+						</p>
+						<ul>
+							<li>In-process TypeScript transform and analysis engine.</li>
+							<li>Read-only previews for <code class="inline">INSERT</code>, <code class="inline">UPDATE</code>, and <code class="inline">DELETE</code>.</li>
+							<li>Transaction-control neutralization, named EXEC stubs, and variable tracing.</li>
+							<li>Workbench with source, generated SQL, analysis, and activity-log panes.</li>
+							<li>VSIX packaging and GitHub Pages documentation.</li>
+						</ul>
+					</section>
+
+					<footer class="page-footer">
+						<p>
+							For implementation details, see the
+							<a href="technical-design.html">technical design</a>.
+							<a href="index.html">← Back to user documentation</a>
+						</p>
+					</footer>
+				</div>
+			</main>
+		</div>
+		<script src="theme.js"></script>
+	</body>
+</html>

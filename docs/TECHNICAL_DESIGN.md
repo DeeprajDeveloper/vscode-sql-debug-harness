@@ -5,10 +5,10 @@
 | **Project** | vscode-sql-debug-harness |
 | **Extension ID** | `DeeprajAdhikary.sql-debug-harness` |
 | **Package / CLI** | `sql-debug-harness` |
-| **Version** | 0.0.1-beta.1 |
+| **Version** | 0.0.2 |
 | **Engine** | In-process TypeScript (`src/engine/`) |
 | **License** | MIT |
-| **Last updated** | 2026-07-19 |
+| **Last updated** | 2026-07-25 |
 
 ---
 
@@ -27,6 +27,7 @@ SQL Debug Harness ships as a **standalone VS Code extension** with an in-process
 - Neutralizes TCL (`BEGIN TRAN` / `COMMIT` / `ROLLBACK` / `SAVE TRAN`)
 - Stubs `EXEC` calls with `PRINT` diagnostics
 - Injects variable traces (`PRINT` or `RAISERROR`)
+- Converts parenthesized, multi-parameter procedure headers to one valid `DECLARE`, including `OUTPUT` / `OUT` parameters
 - Surfaces unsupported constructs (dynamic SQL, cursors, `WHILE`, `MERGE`, `OUTPUT`) as loud warnings
 
 **No Python, pip, or external runtime** is required beyond VS Code’s Node.js host.
@@ -77,8 +78,9 @@ prepare (strip GO, deploy preamble, CREATE PROC → DECLARE)
 | `src/engine/inventory.ts` | Analyze report |
 | `src/engine/unsupported.ts` | Dynamic SQL / cursor / WHILE / MERGE / OUTPUT flags |
 | `src/engine/parser.ts` | Best-effort `node-sql-parser` TransactSQL wrapper |
-| `src/harnessWorkbench.ts` | Workbench webview: source + debug + analysis + active log + per-artifact save |
-| `src/harnessSidebar.ts` | Activity-bar tree view (welcome content host) |
+| `src/harnessWorkbench.ts` | Workbench webview: source + debug + grouped analysis + active log + history + per-artifact save |
+| `src/harnessSidebar.ts` | Activity-bar actions and grouped analyzed/debugged procedure history |
+| `src/history.ts` | Workspace-scoped recent procedure persistence |
 | `src/configureSettings.ts` | Interactive settings QuickPick |
 | `src/cli.ts` | `npx sql-debug-harness` entry |
 

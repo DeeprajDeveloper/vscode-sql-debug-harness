@@ -13,6 +13,7 @@ import {
   openExtensionSettings,
 } from "./configureSettings";
 import { registerHarnessSidebar } from "./harnessSidebar";
+import { recordHistory } from "./history";
 
 const OUTPUT_CHANNEL = "SQL SP Harness";
 
@@ -105,6 +106,13 @@ async function openWorkbench(
       return;
     }
     showHarnessWorkbench(context, resolved);
+    if (resolved.sourceUri || resolved.label) {
+      recordHistory(context, {
+        label: resolved.label,
+        uri: resolved.sourceUri,
+        action: "opened",
+      });
+    }
     return;
   }
 
@@ -114,6 +122,11 @@ async function openWorkbench(
     const resolved = await resolveSqlSource();
     if (resolved) {
       showHarnessWorkbench(context, resolved);
+      recordHistory(context, {
+        label: resolved.label,
+        uri: resolved.sourceUri,
+        action: "opened",
+      });
       return;
     }
   }
@@ -164,6 +177,11 @@ async function generateDebugScript(
     debugSql: result.sql,
     stepLog: result.stepLog,
   });
+  recordHistory(context, {
+    label: resolved.label,
+    uri: resolved.sourceUri,
+    action: "debugged",
+  });
 
   const hasWarnings =
     result.stats.warnings.length > 0 || result.parseErrors.length > 0;
@@ -211,6 +229,11 @@ async function runAnalyze(
   showHarnessWorkbench(context, resolved, {
     report,
     stepLog: report.stepLog,
+  });
+  recordHistory(context, {
+    label: resolved.label,
+    uri: resolved.sourceUri,
+    action: "analyzed",
   });
 
   const realWarnings = report.warnings.filter(

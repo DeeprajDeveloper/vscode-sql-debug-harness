@@ -202,6 +202,27 @@
   }
 }
 
+.sidebar-page-links {
+  display: flex;
+  flex-direction: column;
+  gap: $space-lg;
+  margin: $space-7xl 0;
+
+  .sidebar-cta {
+    margin: 0;
+  }
+}
+
+.sidebar-cta--secondary {
+  background: $surface-raised;
+  color: $muted;
+  border: $border-width solid $border;
+
+  &:hover {
+    color: $safe;
+  }
+}
+
 .brand.is-compact {
   margin: 0;
   flex: 1;

@@ -247,8 +247,8 @@
 
     var debugCode =
       '<span class="com">-- [DBG] Harness: was CREATE PROCEDURE dbo.usp_SimpleDml</span>\n' +
-      '<span class="kw">DECLARE</span> @Id INT = <span class="kw">NULL</span>;  <span class="com">-- TODO: set test value</span>\n' +
-      '<span class="kw">DECLARE</span> @Name NVARCHAR(100) = <span class="kw">NULL</span>;\n' +
+      '<span class="kw">DECLARE</span> @Id INT = <span class="kw">NULL</span>,  <span class="com">-- TODO: set test value</span>\n' +
+      '        @Name NVARCHAR(100) = <span class="kw">NULL</span>;  <span class="com">-- TODO: set test value</span>\n' +
       '<span class="kw">BEGIN</span>\n' +
       '    <span class="com">-- [DBG-PREVIEW] Would have executed:</span>\n' +
       '    <span class="safe-tok">SELECT</span> <span class="str">N\'INSERT to table dbo.Items\'</span> <span class="kw">AS</span> [DBG_Action],\n' +

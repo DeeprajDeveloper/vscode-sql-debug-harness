@@ -1,7 +1,7 @@
 # SQL Debug Harness — MVP 1 Requirements Document
 
 **Repo:** `vscode-sql-debug-harness` (extension)
-**Status:** **Shipped as `0.0.1-beta.1`.** The TypeScript engine runs in-process inside the extension (and optional `npx` CLI). Python/PyPI backend path is retired. This document remains the MVP1 scope of record.
+**Status:** **Originally shipped as `0.0.1-beta.1`; current release `0.0.2`.** The TypeScript engine runs in-process inside the extension (and optional `npx` CLI). Python/PyPI backend path is retired. This document remains the MVP1 scope of record.
 
 ---
 

@@ -7,7 +7,7 @@
     "url": "https://github.com/DeeprajDeveloper/vscode-sql-debug-harness"
   },
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "DeeprajAdhikary",
   "engines": {
     "vscode": "^1.85.0",
@@ -17,7 +17,7 @@
   "categories": [
     "Other",
     "Programming Languages"
-    ],
+  ],
   "keywords": [
     "sql",
     "tsql",
@@ -53,7 +53,8 @@
     "viewsWelcome": [
       {
         "view": "sqlSpHarness.sidebar",
-        "contents": "Open the SQL Debug Harness workbench to analyze procedures and generate safe debug scripts.\n\n[Open Workbench](command:spDebug.openWorkbench)\n\n[Analyze Active SQL](command:spDebug.analyze)\n\n[Generate Debug Script](command:spDebug.generate)\n\n**Tip:** In the workbench, use **Select File…** to pick a workspace `.sql` file, or **Load Active** for the open editor."
+        "contents": "SQL Debug Harness is ready.\n\nUse **Actions** above, or open a `.sql` file and run Analyze / Generate.\n\n**Recent procedures** appear here after you analyze or debug.",
+        "when": "sqlSpHarness.historyEmpty"
       }
     ],
     "commands": [
@@ -92,6 +93,24 @@
         "title": "Open Extension Settings",
         "category": "SQL Debug Harness",
         "icon": "$(settings)"
+      },
+      {
+        "command": "spDebug.clearHistory",
+        "title": "Clear Recent Procedures",
+        "category": "SQL Debug Harness",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "spDebug.toggleSidebar",
+        "title": "Toggle Sidebar",
+        "category": "SQL Debug Harness",
+        "icon": "$(layout-sidebar-left)"
+      },
+      {
+        "command": "spDebug.showHistory",
+        "title": "Show Recent Procedures",
+        "category": "SQL Debug Harness",
+        "icon": "$(history)"
       }
     ],
     "submenus": [
@@ -117,6 +136,18 @@
           "command": "spDebug.generate",
           "when": "view == sqlSpHarness.sidebar",
           "group": "navigation@3"
+        },
+        {
+          "command": "spDebug.clearHistory",
+          "when": "view == sqlSpHarness.sidebar",
+          "group": "navigation@9"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "spDebug.clearHistory",
+          "when": "view == sqlSpHarness.sidebar && viewItem == historyGroup",
+          "group": "inline@1"
         }
       ],
       "spDebug.submenu": [
@@ -196,6 +227,28 @@
             "default": "print",
             "order": 1,
             "description": "Trace line style for generated debug scripts."
+          }
+        }
+      },
+      {
+        "title": "SQL Debug Harness › Workbench",
+        "order": 2,
+        "properties": {
+          "spDebug.workbenchToolbarStyle": {
+            "type": "string",
+            "enum": [
+              "iconsAndText",
+              "iconsOnly",
+              "textOnly"
+            ],
+            "enumDescriptions": [
+              "Show icons and labels on workbench toolbar buttons",
+              "Show icons only (labels appear as tooltips)",
+              "Show text labels only"
+            ],
+            "default": "iconsAndText",
+            "order": 1,
+            "description": "How workbench toolbar buttons are displayed."
           }
         }
       },

@@ -37,6 +37,20 @@ const SETTING_DEFS: SettingDef[] = [
     enumValues: ["print", "raiserror"],
   },
   {
+    key: "__divider_workbench__",
+    label: "— Workbench —",
+    detail: "",
+    kind: "string",
+    isDivider: true,
+  },
+  {
+    key: "workbenchToolbarStyle",
+    label: "Toolbar button style",
+    detail: "Icons + text, icons only, or text only",
+    kind: "enum",
+    enumValues: ["iconsAndText", "iconsOnly", "textOnly"],
+  },
+  {
     key: "__divider_logging__",
     label: "— Logging —",
     detail: "",

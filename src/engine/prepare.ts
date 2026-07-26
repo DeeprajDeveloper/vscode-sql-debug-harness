@@ -79,11 +79,50 @@ function deployIfExistsDropSpan(
   return [start, scan + 1];
 }
 
+/** Strip a single outer `( ... )` wrapping a parameter list, or a dangling leading `(`. */
+function stripOuterParamParens(text: string): string {
+  let t = text.trim();
+  if (!t.startsWith("(")) {
+    return t;
+  }
+  let depth = 0;
+  let inString = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (ch === "'") {
+      if (inString && i + 1 < t.length && t[i + 1] === "'") {
+        i += 1;
+        continue;
+      }
+      inString = !inString;
+      continue;
+    }
+    if (inString) {
+      continue;
+    }
+    if (ch === "(") {
+      depth += 1;
+    } else if (ch === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        if (i === t.length - 1) {
+          return t.slice(1, i).trim();
+        }
+        break;
+      }
+    }
+  }
+  // Dangling leading "(" (closing paren lived on its own line) — drop it.
+  t = t.replace(/^\(\s*/, "").replace(/\s*\)$/, "").trim();
+  return t;
+}
+
 function splitParamList(text: string): string[] {
+  const normalized = stripOuterParamParens(text);
   const parts: string[] = [];
   let depth = 0;
   let current = "";
-  for (const ch of text) {
+  for (const ch of normalized) {
     if (ch === "(") {
       depth += 1;
     } else if (ch === ")") {
@@ -103,6 +142,32 @@ function splitParamList(text: string): string[] {
     parts.push(tail);
   }
   return parts;
+}
+
+type ParsedParam = {
+  name: string;
+  typeSql: string;
+  defaultVal: string | null;
+  isOutput: boolean;
+};
+
+/** Remove OUTPUT / OUT / READONLY and stray trailing commas/semicolons from type or default text. */
+function scrubParamTypeOrDefault(raw: string): {
+  text: string;
+  isOutput: boolean;
+} {
+  let text = raw.trim().replace(/[,;]+$/g, "").trim();
+  let isOutput = false;
+  // Trailing modifiers: OUTPUT | OUT | READONLY (order varies in the wild)
+  const modRe =
+    /(?:^|\s+)(?:OUTPUT|OUT|READONLY)\b/gi;
+  const found = text.match(modRe);
+  if (found) {
+    isOutput = found.some((m) => /\bOUT(PUT)?\b/i.test(m));
+    text = text.replace(modRe, " ").replace(/\s+/g, " ").trim();
+  }
+  text = text.replace(/[,;]+$/g, "").trim();
+  return { text, isOutput };
 }
 
 export function stripDeployPreamble(sql: string, onDetail?: LogCallback): string {
@@ -162,23 +227,35 @@ export function stripDeployPreamble(sql: string, onDetail?: LogCallback): string
   return hadTrailingNewline ? body + "\n" : body;
 }
 
-function parseParameterChunks(
-  chunks: string[]
-): Array<[string, string, string | null]> {
-  const params: Array<[string, string, string | null]> = [];
+function parseParameterChunks(chunks: string[]): ParsedParam[] {
+  const params: ParsedParam[] = [];
   for (const chunk of chunks) {
-    const text = chunk.trim().replace(/,+$/, "").trim();
+    // Org scripts often end a param with `;` or include OUTPUT — strip before parse.
+    const text = chunk.trim().replace(/[,;]+$/g, "").trim();
     if (!text || !text.startsWith("@")) {
       continue;
     }
     let match = PROC_PARAM_WITH_DEFAULT.exec(text);
     if (match) {
-      params.push([match[1], match[2].trim(), match[3].trim()]);
+      const typePart = scrubParamTypeOrDefault(match[2]);
+      const defPart = scrubParamTypeOrDefault(match[3]);
+      params.push({
+        name: match[1],
+        typeSql: typePart.text,
+        defaultVal: defPart.text || null,
+        isOutput: typePart.isOutput || defPart.isOutput,
+      });
       continue;
     }
     match = PROC_PARAM_PLAIN.exec(text);
     if (match) {
-      params.push([match[1], match[2].trim(), null]);
+      const typePart = scrubParamTypeOrDefault(match[2]);
+      params.push({
+        name: match[1],
+        typeSql: typePart.text,
+        defaultVal: null,
+        isOutput: typePart.isOutput,
+      });
     }
   }
   return params;
@@ -186,23 +263,32 @@ function parseParameterChunks(
 
 function declareLinesForParams(
   procName: string,
-  params: Array<[string, string, string | null]>,
+  params: ParsedParam[],
   indent: string
 ): string[] {
   const header = `${indent}-- [DBG] Harness: was CREATE PROCEDURE ${procName}; set parameter values below.`;
   if (params.length === 0) {
     return [header, `${indent}-- (no parameters)`];
   }
+  // One DECLARE with comma-separated variables (no semicolon between params).
   const lines = [header];
-  for (const [name, typeSql, defaultVal] of params) {
-    if (defaultVal) {
-      lines.push(`${indent}DECLARE ${name} ${typeSql} = ${defaultVal};`);
-    } else {
-      lines.push(
-        `${indent}DECLARE ${name} ${typeSql} = NULL;  -- TODO: set test value`
-      );
+  params.forEach((param, index) => {
+    const isLast = index === params.length - 1;
+    const sep = isLast ? ";" : ",";
+    const notes: string[] = [];
+    if (param.isOutput) {
+      notes.push("OUTPUT");
     }
-  }
+    if (!param.defaultVal) {
+      notes.push("TODO: set test value");
+    }
+    const comment = notes.length ? `  -- ${notes.join(" — ")}` : "";
+    const value = param.defaultVal ?? "NULL";
+    const prefix = index === 0 ? `${indent}DECLARE ` : `${indent}        `;
+    lines.push(
+      `${prefix}${param.name} ${param.typeSql} = ${value}${sep}${comment}`
+    );
+  });
   return lines;
 }
 
@@ -261,12 +347,26 @@ export function convertCreateProcedureToDeclares(
       i += 1;
       const paramParts: string[] = [];
       while (i < lines.length) {
-        if (AS_LINE.test(lines[i])) {
-          asHasBegin = /\bBEGIN\b/i.test(lines[i]);
+        const raw = lines[i];
+        const trimmed = raw.trim();
+        // Opening/closing paren alone (common around param lists) — skip.
+        if (trimmed === "(" || trimmed === ")") {
+          i += 1;
+          continue;
+        }
+        if (AS_LINE.test(raw)) {
+          asHasBegin = /\bBEGIN\b/i.test(raw);
           i += 1;
           break;
         }
-        paramParts.push(lines[i].trim());
+        // Line like ") AS" / ") AS BEGIN" — treat as AS, drop the paren.
+        const closeAs = /^\s*\)\s*(AS(?:\s+BEGIN)?)\s*;?\s*$/i.exec(raw);
+        if (closeAs) {
+          asHasBegin = /\bBEGIN\b/i.test(closeAs[1]);
+          i += 1;
+          break;
+        }
+        paramParts.push(trimmed);
         i += 1;
       }
       paramChunks = splitParamList(paramParts.join(" "));
