@@ -173,7 +173,7 @@ export function inventoryToPlainText(inv: InventoryCounts): string {
   ];
 
   const summaryRows: Array<[string, string]> = [
-    ["is_parsable", String(inv.isParsable)],
+    ["Parsable File?", String(inv.isParsable)],
   ];
   for (const [label, attr] of COUNT_SECTIONS) {
     const value = inv[attr];
@@ -244,7 +244,7 @@ export function inventoryToAnalyzeReport(
   stepLog: string[] = []
 ): AnalyzeReport {
   const summary: AnalyzeSummaryRow[] = [
-    { element: "is_parsable", count: String(inv.isParsable) },
+    { element: "Parsable File?", count: String(inv.isParsable) },
   ];
   for (const [label, attr] of COUNT_SECTIONS) {
     const value = inv[attr];

@@ -13,14 +13,14 @@ function printHelp(): void {
   console.log(`sql-debug-harness — T-SQL stored procedure debug harness
 
 Usage:
-  sql-debug-harness generate -i <file.sql> [-o <out.sql>] [--trace-style print|raiserror]
+  sql-debug-harness generate -i <file.sql> [-o <out.sql>] [--trace-style select|print|printCombined|raiserror]
   sql-debug-harness analyze  -i <file.sql> [--plain]
   sql-debug-harness version
 
 Options:
   -i, --input <path>       Input .sql file (or - for stdin)
   -o, --output <path>      Output file (generate; default stdout)
-  --trace-style <style>    print (default) or raiserror
+  --trace-style <style>    select (default), print, printCombined, or raiserror
   --plain                  Plain-text analyze report (default)
   -h, --help               Show help
 `);
@@ -52,7 +52,7 @@ function parseArgs(argv: string[]): {
   const command = args.shift() ?? "help";
   let input: string | undefined;
   let output: string | undefined;
-  let traceStyle: TraceStyle = "print";
+  let traceStyle: TraceStyle = "select";
   let help = false;
 
   while (args.length) {
@@ -65,7 +65,15 @@ function parseArgs(argv: string[]): {
       output = args.shift();
     } else if (a === "--trace-style") {
       const v = args.shift();
-      traceStyle = v === "raiserror" ? "raiserror" : "print";
+      const styles: TraceStyle[] = [
+        "select",
+        "print",
+        "printCombined",
+        "raiserror",
+      ];
+      traceStyle = styles.includes(v as TraceStyle)
+        ? (v as TraceStyle)
+        : "select";
     } else if (a === "--plain") {
       // default
     } else if (!a.startsWith("-") && !input) {

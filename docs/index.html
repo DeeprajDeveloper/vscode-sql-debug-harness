@@ -49,7 +49,7 @@
 					<span class="brand-name">sql-debug-harness</span>
 				</a>
 				<p class="brand-sub" id="package-version">
-					<span class="sidebar-version__value">v0.0.2</span>
+					<span class="sidebar-version__value">v0.0.3</span>
 				</p>
 
 				<nav aria-label="About">
@@ -255,23 +255,25 @@
 						and runs in-process; no Python required.
 					</p>
 
-					<h2 id="whats-new">What’s new in 0.0.2</h2>
+					<h2 id="whats-new">What’s new in 0.0.3</h2>
 					<ul>
 						<li>
-							<strong>Safer procedure parameters:</strong> multi-parameter headers become one
-							comma-separated <code class="inline">DECLARE</code>; parenthesized headers and
-							<code class="inline">OUTPUT</code> / <code class="inline">OUT</code> parameters are handled.
+							<strong>SELECT traces by default:</strong>
+							<code class="inline">spDebug.traceStyle</code> supports
+							<code class="inline">select</code> (default),
+							<code class="inline">print</code>,
+							<code class="inline">printCombined</code>, and
+							<code class="inline">raiserror</code>.
 						</li>
 						<li>
-							<strong>Procedure history:</strong> the activity-bar sidebar groups recently analyzed
-							and debugged procedures, while the Workbench History button opens a quick picker.
+							<strong>Procedure headers:</strong> inline first-line parameters stay continuous in
+							one <code class="inline">DECLARE</code>;
+							<code class="inline">AS BEGIN</code> and the outer procedure
+							<code class="inline">END</code> are stripped from the harness.
 						</li>
 						<li>
-							<strong>Workbench refinements:</strong> normal editor-tab opening, grouped Identified
-							results, full-header accordions, horizontal SQL scrolling, and distinct SVG toolbar icons.
-						</li>
-						<li>
-							<strong>Toolbar preference:</strong> choose icons with text, icons only, or text only.
+							<strong>Workbench Save / Clear:</strong> Save is a single popover for analysis, debug
+							script, log, and open-debug; Clear wipes generated output without regenerating.
 						</li>
 					</ul>
 					<p class="muted">
@@ -427,8 +429,9 @@ npx sql-debug-harness analyze -i MyProc.sql</code></pre>
 					</div>
 					<p class="muted">
 						In the Workbench: <strong>Select File…</strong> or <strong>Load Active</strong>, then
-						Analyze / Generate. Save analysis <code class="inline">.txt</code>, debug
-						<code class="inline">.sql</code>, and step log individually.
+						Analyze / Generate / Clear. Use the Save popover for analysis
+						<code class="inline">.txt</code>, debug <code class="inline">.sql</code>, step log,
+						or open debug in an editor.
 					</p>
 
 					<h2 id="settings">VSCode Settings</h2>
@@ -444,8 +447,8 @@ npx sql-debug-harness analyze -i MyProc.sql</code></pre>
 							<tbody>
 								<tr>
 									<td><code class="inline">spDebug.traceStyle</code></td>
-									<td><code class="inline">print</code></td>
-									<td><code class="inline">print</code> or <code class="inline">raiserror</code></td>
+									<td><code class="inline">select</code></td>
+									<td><code class="inline">select</code>, <code class="inline">print</code>, <code class="inline">printCombined</code>, or <code class="inline">raiserror</code></td>
 								</tr>
 								<tr>
 									<td><code class="inline">spDebug.logToOutput</code></td>

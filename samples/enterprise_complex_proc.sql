@@ -25,9 +25,10 @@ GO
 ================================================================================
 */
 
-CREATE PROCEDURE dbo.usp_ComplexOrderSettlement.
+CREATE PROCEDURE dbo.usp_ComplexOrderSettlement @identifier int,
     @BatchID INT,
-    @DryRun BIT = 0
+    @DryRun BIT = 0,
+    @identifierOut int OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON

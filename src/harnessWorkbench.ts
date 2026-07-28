@@ -47,6 +47,14 @@ const TOOLBAR_ICONS = {
   debug: iconSvg(
     `<circle cx="128" cy="128" r="24"/><path d="M80 104V88a48 48 0 0 1 96 0v16"/><line x1="128" y1="152" x2="128" y2="224"/><line x1="40" y1="88" x2="80" y2="112"/><line x1="216" y1="88" x2="176" y2="112"/><line x1="40" y1="168" x2="80" y2="144"/><line x1="216" y1="168" x2="176" y2="144"/><path d="M88 176a56 56 0 0 0 80 0"/>`
   ),
+  /** Eraser — clear generated output */
+  clear: iconSvg(
+    `<path d="M96 216H216"/><path d="M40 152l88-88a16 16 0 0 1 22.6 0l53.4 53.4a16 16 0 0 1 0 22.6L128 216"/><line x1="128" y1="152" x2="184" y2="96"/>`
+  ),
+  /** FloppyDisk — save menu */
+  save: iconSvg(
+    `<path d="M216 80v128a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8V48a8 8 0 0 1 8-8h128Z"/><path d="M168 40v56H88V40"/><path d="M80 168h96"/>`
+  ),
   /** ClipboardText — save analysis report */
   saveAnalysis: iconSvg(
     `<path d="M160 40h24a16 16 0 0 1 16 16v152a16 16 0 0 1-16 16H72a16 16 0 0 1-16-16V56a16 16 0 0 1 16-16h24"/><path d="M96 40h64v16a16 16 0 0 1-16 16h-32a16 16 0 0 1-16-16Z"/><line x1="96" y1="128" x2="160" y2="128"/><line x1="96" y1="160" x2="160" y2="160"/><line x1="96" y1="192" x2="128" y2="192"/>`
@@ -63,6 +71,8 @@ const TOOLBAR_ICONS = {
   open: iconSvg(
     `<path d="M216 112v96a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8V48a8 8 0 0 1 8-8h96"/><polyline points="144 32 224 32 224 112"/><line x1="112" y1="144" x2="224" y2="32"/>`
   ),
+  /** CaretDown — menu indicator */
+  caret: iconSvg(`<polyline points="80 104 128 152 176 104"/>`),
 } as const;
 
 function toolbarButton(opts: {
@@ -73,6 +83,7 @@ function toolbarButton(opts: {
   style: WorkbenchToolbarStyle;
   secondary?: boolean;
   disabled?: boolean;
+  caret?: boolean;
 }): string {
   const showIcon = opts.style !== "textOnly";
   const showText = opts.style !== "iconsOnly";
@@ -83,8 +94,24 @@ function toolbarButton(opts: {
   const text = showText
     ? `<span class="btn-label">${escapeHtml(opts.label)}</span>`
     : "";
+  const caret =
+    opts.caret && showIcon
+      ? `<span class="btn-caret">${TOOLBAR_ICONS.caret}</span>`
+      : opts.caret && showText
+        ? `<span class="btn-caret-text" aria-hidden="true">▾</span>`
+        : "";
   const disabled = opts.disabled ? "disabled" : "";
-  return `<button type="button" class="${classes}" id="${opts.id}" title="${escapeHtml(opts.title)}" aria-label="${escapeHtml(opts.title)}" ${disabled}>${icon}${text}</button>`;
+  return `<button type="button" class="${classes}" id="${opts.id}" title="${escapeHtml(opts.title)}" aria-label="${escapeHtml(opts.title)}" ${disabled}>${icon}${text}${caret}</button>`;
+}
+
+function saveMenuItem(opts: {
+  action: string;
+  label: string;
+  icon: keyof typeof TOOLBAR_ICONS;
+  disabled?: boolean;
+}): string {
+  const disabled = opts.disabled ? "disabled" : "";
+  return `<button type="button" class="menu-item" role="menuitem" data-action="${opts.action}" ${disabled}>${TOOLBAR_ICONS[opts.icon]}<span>${escapeHtml(opts.label)}</span></button>`;
 }
 
 function escapeHtml(text: string): string {
@@ -240,12 +267,13 @@ function buildHtml(s: WorkbenchState): string {
   const logText = hasLog ? escapeHtml(s.stepLog.join("\n")) : "";
   const toolbarStyle = getSpDebugSettings().workbenchToolbarStyle;
 
+  const hasAnythingToSave = hasAnalysis || hasDebug || hasLog;
   const btn = (
     id: string,
     btnLabel: string,
     title: string,
     icon: keyof typeof TOOLBAR_ICONS,
-    opts?: { secondary?: boolean; disabled?: boolean }
+    opts?: { secondary?: boolean; disabled?: boolean; caret?: boolean }
   ) =>
     toolbarButton({
       id,
@@ -255,7 +283,43 @@ function buildHtml(s: WorkbenchState): string {
       style: toolbarStyle,
       secondary: opts?.secondary,
       disabled: opts?.disabled,
+      caret: opts?.caret,
     });
+
+  const saveMenu = `
+    <div class="menu-wrap" id="save-menu-wrap">
+      ${btn("btn-save", "Save", "Save or open generated artifacts", "save", {
+        secondary: true,
+        disabled: !hasAnythingToSave,
+        caret: true,
+      })}
+      <div class="save-menu" id="save-menu" role="menu" aria-label="Save options">
+        ${saveMenuItem({
+          action: "saveAnalysis",
+          label: "Analysis Report",
+          icon: "saveAnalysis",
+          disabled: !hasAnalysis,
+        })}
+        ${saveMenuItem({
+          action: "saveDebug",
+          label: "Debug Script",
+          icon: "saveDebug",
+          disabled: !hasDebug,
+        })}
+        ${saveMenuItem({
+          action: "saveLog",
+          label: "Log File",
+          icon: "saveLog",
+          disabled: !hasLog,
+        })}
+        ${saveMenuItem({
+          action: "openDebug",
+          label: "Open Debug Script",
+          icon: "open",
+          disabled: !hasDebug,
+        })}
+      </div>
+    </div>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -362,7 +426,56 @@ function buildHtml(s: WorkbenchState): string {
       padding: 6px 8px;
     }
     .btn.toolbar-iconsOnly .btn-label { display: none; }
+    .btn-caret {
+      display: inline-flex;
+      margin-left: -2px;
+    }
+    .btn-caret .btn-icon {
+      width: 12px;
+      height: 12px;
+    }
+    .btn-caret-text {
+      font-size: 0.75em;
+      opacity: 0.85;
+      line-height: 1;
+    }
     .status { font-size: 0.85em; color: var(--muted); }
+
+    .menu-wrap {
+      position: relative;
+      display: inline-flex;
+    }
+    .save-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      min-width: 210px;
+      z-index: 40;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--pane-bg);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+    }
+    .save-menu.open { display: flex; flex-direction: column; gap: 2px; }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      border: none;
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--fg);
+      font: inherit;
+      text-align: left;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+    .menu-item:hover:not(:disabled) { background: var(--list-hover); }
+    .menu-item:disabled { opacity: 0.4; cursor: not-allowed; }
+    .menu-item .btn-icon { width: 16px; height: 16px; flex-shrink: 0; }
 
     .workspace {
       flex: 1;
@@ -701,13 +814,10 @@ function buildHtml(s: WorkbenchState): string {
       ${btn("btn-load-active", "Load Active SQL", "Load the active SQL editor", "file", { secondary: true })}
       ${btn("btn-analyze", "Analyze Script", "Analyze the loaded procedure", "analyze", { disabled: !loaded })}
       ${btn("btn-generate", "Generate Debug Script", "Generate a safe debug harness script", "debug", { disabled: !loaded })}
+      ${btn("btn-clear", "Clear", "Clear generated debug script, analysis, and activity log", "clear", { secondary: true, disabled: !(hasDebug || hasAnalysis || hasLog) })}
     </div>
     <div class="toolbar-right">
-      <span class="status">Saving Options:</span>
-      ${btn("btn-save-analysis", "Analysis Report", "Save analysis report", "saveAnalysis", { secondary: true, disabled: !hasAnalysis })}
-      ${btn("btn-save-debug", "Debug Script", "Save generated debug script", "saveDebug", { secondary: true, disabled: !hasDebug })}
-      ${btn("btn-save-log", "Log File", "Save activity log", "saveLog", { secondary: true, disabled: !hasLog })}
-      ${btn("btn-open-debug", "Open Debug Script", "Open debug script in an editor tab", "open", { secondary: true, disabled: !hasDebug })}
+      ${saveMenu}
     </div>
   </div>
 
@@ -788,10 +898,47 @@ function buildHtml(s: WorkbenchState): string {
     document.getElementById('btn-load-active').addEventListener('click', () => post('loadActive'));
     document.getElementById('btn-analyze').addEventListener('click', () => post('analyze'));
     document.getElementById('btn-generate').addEventListener('click', () => post('generate'));
-    document.getElementById('btn-save-analysis').addEventListener('click', () => post('saveAnalysis'));
-    document.getElementById('btn-save-debug').addEventListener('click', () => post('saveDebug'));
-    document.getElementById('btn-save-log').addEventListener('click', () => post('saveLog'));
-    document.getElementById('btn-open-debug').addEventListener('click', () => post('openDebug'));
+    document.getElementById('btn-clear').addEventListener('click', () => post('clear'));
+
+    (function initSaveMenu() {
+      const wrap = document.getElementById('save-menu-wrap');
+      const btnSave = document.getElementById('btn-save');
+      const menu = document.getElementById('save-menu');
+      if (!wrap || !btnSave || !menu) return;
+
+      function closeMenu() {
+        menu.classList.remove('open');
+        btnSave.setAttribute('aria-expanded', 'false');
+      }
+      function toggleMenu(ev) {
+        ev.stopPropagation();
+        if (btnSave.disabled) return;
+        const open = !menu.classList.contains('open');
+        menu.classList.toggle('open', open);
+        btnSave.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+
+      btnSave.setAttribute('aria-haspopup', 'menu');
+      btnSave.setAttribute('aria-expanded', 'false');
+      btnSave.addEventListener('click', toggleMenu);
+
+      menu.querySelectorAll('.menu-item').forEach((item) => {
+        item.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          if (item.disabled) return;
+          const action = item.dataset.action;
+          closeMenu();
+          if (action) post(action);
+        });
+      });
+
+      document.addEventListener('click', (ev) => {
+        if (!wrap.contains(ev.target)) closeMenu();
+      });
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') closeMenu();
+      });
+    })();
     document.querySelectorAll('.line-link').forEach((btn) => {
       btn.addEventListener('click', () => {
         const line = parseInt(btn.dataset.line, 10);
@@ -1342,6 +1489,9 @@ function ensurePanel(context: vscode.ExtensionContext): vscode.WebviewPanel {
         case "generate":
           await runGenerateInWorkbench();
           break;
+        case "clear":
+          clearWorkbenchOutputs();
+          break;
         case "saveAnalysis":
           if (state.report && state.source) {
             await saveTextDialog(
@@ -1428,6 +1578,23 @@ async function runAnalyzeInWorkbench(): Promise<void> {
       `SQL Debug Harness: ${warnings.length} warning(s) — see Analysis › Warnings.`
     );
   }
+}
+
+function clearWorkbenchOutputs(): void {
+  if (!state) {
+    return;
+  }
+  const hadOutput = Boolean(
+    state.debugSql || state.report || state.stepLog.length
+  );
+  if (!hadOutput) {
+    return;
+  }
+  state.debugSql = undefined;
+  state.report = undefined;
+  state.stepLog = [];
+  state.lastAction = undefined;
+  refreshPanel();
 }
 
 async function runGenerateInWorkbench(): Promise<void> {

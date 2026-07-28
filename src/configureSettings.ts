@@ -32,9 +32,9 @@ const SETTING_DEFS: SettingDef[] = [
   {
     key: "traceStyle",
     label: "Trace style",
-    detail: "PRINT or RAISERROR for variable traces in debug scripts",
+    detail: "SELECT, PRINT, combined PRINT, or RAISERROR for variable traces",
     kind: "enum",
-    enumValues: ["print", "raiserror"],
+    enumValues: ["select", "print", "printCombined", "raiserror"],
   },
   {
     key: "__divider_workbench__",

@@ -178,16 +178,52 @@ function neutralizeTclLine(line: string, indent: string): string[] {
   ];
 }
 
+function varColumnAlias(varName: string): string {
+  return varName.startsWith("@") ? varName.slice(1) : varName;
+}
+
 function traceLineForVar(
   varName: string,
   indent: string,
-  style: TraceStyle
+  style: "print" | "raiserror"
 ): string {
   const castExpr = `CAST(${varName} AS NVARCHAR(4000))`;
   if (style === "print") {
     return `${indent}PRINT CONCAT(N'[DBG] ${varName} = ', ${castExpr});`;
   }
   return `${indent}RAISERROR(N'[DBG] ${varName} = %s', 0, 1, ${castExpr}) WITH NOWAIT;`;
+}
+
+/** One or more trace lines for the given variable(s) at an assignment site. */
+function traceLinesForVars(
+  varNames: string[],
+  indent: string,
+  style: TraceStyle
+): string[] {
+  if (!varNames.length) {
+    return [];
+  }
+  if (style === "select") {
+    const cols = varNames
+      .map((v) => `${v} [${varColumnAlias(v)}]`)
+      .join(", ");
+    return [`${indent}SELECT 'DBG' [NOTES], ${cols};`];
+  }
+  if (style === "printCombined") {
+    if (varNames.length === 1) {
+      return [traceLineForVar(varNames[0], indent, "print")];
+    }
+    const parts: string[] = [];
+    varNames.forEach((v, i) => {
+      const label = i === 0 ? `N'[DBG] ${v} = '` : `N'; ${v} = '`;
+      parts.push(label, `CAST(${v} AS NVARCHAR(4000))`);
+    });
+    return [`${indent}PRINT CONCAT(${parts.join(", ")});`];
+  }
+  if (style === "print") {
+    return varNames.map((v) => traceLineForVar(v, indent, "print"));
+  }
+  return varNames.map((v) => traceLineForVar(v, indent, "raiserror"));
 }
 
 function injectSetTraces(
@@ -207,8 +243,8 @@ function injectSetTraces(
     }
     const indent = m[1] || "    ";
     const varName = m[2];
-    const trace = traceLineForVar(varName, indent, traceStyle);
-    out.push(trace);
+    const traces = traceLinesForVars([varName], indent, traceStyle);
+    out.push(...traces);
     count += 1;
     emitLog(
       onDetail,
@@ -243,16 +279,14 @@ function injectSelectTraces(
       return full;
     }
     const indent = "    ";
-    const traces = vars
-      .map((v) => traceLineForVar(v, indent, traceStyle))
-      .join("\n");
+    const traces = traceLinesForVars(vars, indent, traceStyle);
     count += vars.length;
     emitLog(
       onDetail,
       "injectSelectTraces",
       `  SELECT @assign trace(s) added: ${vars.join(", ")} (${traceStyle})`
     );
-    return full + "\n" + traces;
+    return full + "\n" + traces.join("\n");
   });
   return [result, count];
 }
@@ -427,7 +461,7 @@ export function transformSql(
     options.onLog?.(fn, msg);
   };
   const onProgress = options.onProgress;
-  const traceStyle = options.traceStyle ?? "print";
+  const traceStyle = options.traceStyle ?? "select";
   const stubDml = options.stubDml !== false;
   const addBlockMarkers = options.addBlockMarkers === true;
   const stripComments = options.stripComments !== false;

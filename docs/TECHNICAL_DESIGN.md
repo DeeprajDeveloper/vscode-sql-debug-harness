@@ -5,10 +5,10 @@
 | **Project** | vscode-sql-debug-harness |
 | **Extension ID** | `DeeprajAdhikary.sql-debug-harness` |
 | **Package / CLI** | `sql-debug-harness` |
-| **Version** | 0.0.2 |
+| **Version** | 0.0.3 |
 | **Engine** | In-process TypeScript (`src/engine/`) |
 | **License** | MIT |
-| **Last updated** | 2026-07-25 |
+| **Last updated** | 2026-07-27 |
 
 ---
 
@@ -26,8 +26,8 @@ SQL Debug Harness ships as a **standalone VS Code extension** with an in-process
 - Rewrites `INSERT` / `UPDATE` / `DELETE` into `SELECT` previews
 - Neutralizes TCL (`BEGIN TRAN` / `COMMIT` / `ROLLBACK` / `SAVE TRAN`)
 - Stubs `EXEC` calls with `PRINT` diagnostics
-- Injects variable traces (`PRINT` or `RAISERROR`)
-- Converts parenthesized, multi-parameter procedure headers to one valid `DECLARE`, including `OUTPUT` / `OUT` parameters
+- Injects variable traces (`SELECT` by default; also `PRINT`, combined `PRINT`, or `RAISERROR`)
+- Converts parenthesized / multi-line procedure headers to one valid `DECLARE` (including `OUTPUT` / `OUT`), and strips procedure `AS BEGIN` / outer `END`
 - Surfaces unsupported constructs (dynamic SQL, cursors, `WHILE`, `MERGE`, `OUTPUT`) as loud warnings
 
 **No Python, pip, or external runtime** is required beyond VS Code’s Node.js host.
@@ -114,9 +114,9 @@ analyze(sql, { onLog? })
 | `spDebug.openInWorkbench` | Load a chosen `.sql` file into the workbench |
 | `spDebug.configure` / `openSettings` | Settings UI |
 
-The workbench supports **individual saves** for analysis report, debug `.sql`, and step log.
+The workbench **Save** popover covers analysis report, debug `.sql`, step log, and open-debug; **Clear** resets generated panes.
 
-**Settings retained:** `spDebug.traceStyle`, `spDebug.logToOutput`, `spDebug.saveLogFile`, `spDebug.quietWhenLogging`.
+**Settings retained:** `spDebug.traceStyle` (`select` | `print` | `printCombined` | `raiserror`), `spDebug.logToOutput`, `spDebug.saveLogFile`, `spDebug.quietWhenLogging`, `spDebug.workbenchToolbarStyle`.
 
 **Removed:** `spDebug.pythonPath`, `spDebug.pipPackage`, `spDebug.autoInstallBackend`, `spDebug.verifySetup`.
 
@@ -125,7 +125,7 @@ The workbench supports **individual saves** for analysis report, debug `.sql`, a
 ## 4. CLI
 
 ```bash
-sql-debug-harness generate -i <file.sql> [-o <out.sql>] [--trace-style print|raiserror]
+sql-debug-harness generate -i <file.sql> [-o <out.sql>] [--trace-style select|print|printCombined|raiserror]
 sql-debug-harness analyze  -i <file.sql>
 sql-debug-harness version
 ```

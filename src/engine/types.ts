@@ -1,6 +1,6 @@
 /** Shared types for the in-process T-SQL harness engine. */
 
-export type TraceStyle = "print" | "raiserror";
+export type TraceStyle = "select" | "print" | "printCombined" | "raiserror";
 
 export type LogCallback = (functionName: string, message: string) => void;
 

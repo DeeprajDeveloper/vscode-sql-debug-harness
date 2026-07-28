@@ -1,7 +1,7 @@
 # SQL Debug Harness — MVP 1 Requirements Document
 
 **Repo:** `vscode-sql-debug-harness` (extension)
-**Status:** **Originally shipped as `0.0.1-beta.1`; current release `0.0.2`.** The TypeScript engine runs in-process inside the extension (and optional `npx` CLI). Python/PyPI backend path is retired. This document remains the MVP1 scope of record.
+**Status:** **Originally shipped as `0.0.1-beta.1`; current release `0.0.3`.** The TypeScript engine runs in-process inside the extension (and optional `npx` CLI). Python/PyPI backend path is retired. This document remains the MVP1 scope of record.
 
 ---
 
@@ -74,7 +74,7 @@ In practice the engine uses a **hybrid** approach: optional AST plus authoritati
 - FR1: Parse / prepare a T-SQL `CREATE PROCEDURE` / `ALTER PROCEDURE` script (hybrid AST + text scan).
 - FR2: Detect all `INSERT`, `UPDATE`, `DELETE` statements and rewrite each into a `SELECT` that previews affected rows/values.
 - FR3: Detect all TCL statements (`BEGIN TRAN`, `COMMIT`, `ROLLBACK`, `SAVE TRAN`) and neutralize them so they cannot commit a real change, while preserving script structure.
-- FR4: Insert `PRINT` or `RAISERROR` trace statements for declared variables at meaningful points (configurable, matching existing `spDebug.traceStyle`).
+- FR4: Insert variable traces at meaningful points (configurable via `spDebug.traceStyle`: `select`, `print`, `printCombined`, or `raiserror`).
 - FR5: Detect statements the tool **cannot safely rewrite** (dynamic SQL, cursors, complex nested control flow) and surface them as explicit warnings rather than silently passing them through unchanged.
 - FR6: Optional Node CLI (`npx sql-debug-harness generate|analyze`) sharing the same TS module as the extension. **Done.**
 

@@ -7,7 +7,7 @@
     "url": "https://github.com/DeeprajDeveloper/vscode-sql-debug-harness"
   },
   "license": "MIT",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "DeeprajAdhikary",
   "engines": {
     "vscode": "^1.85.0",
@@ -217,16 +217,20 @@
           "spDebug.traceStyle": {
             "type": "string",
             "enum": [
-              "raiserror",
-              "print"
+              "select",
+              "print",
+              "printCombined",
+              "raiserror"
             ],
             "enumDescriptions": [
-              "RAISERROR … WITH NOWAIT (Messages tab in SSMS)",
-              "PRINT traces (default)"
+              "SELECT 'DBG' [NOTES], @var [var], … (default)",
+              "One PRINT per variable after each assignment",
+              "Single PRINT with all variables from the same assignment combined",
+              "RAISERROR … WITH NOWAIT (Messages tab in SSMS)"
             ],
-            "default": "print",
+            "default": "select",
             "order": 1,
-            "description": "Trace line style for generated debug scripts."
+            "description": "How variable traces are emitted in generated debug scripts."
           }
         }
       },

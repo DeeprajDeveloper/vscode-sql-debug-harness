@@ -292,14 +292,175 @@ function declareLinesForParams(
   return lines;
 }
 
-function splitCreateTail(tail: string): [string, boolean] {
-  const match = /\s+AS(?:\s+BEGIN)?\s*$/i.exec(tail);
-  if (!match) {
-    return [tail.trim(), false];
+function splitCreateTail(tail: string): {
+  paramText: string;
+  asHasBegin: boolean;
+  bodySuffix: string;
+  /** True when AS (with optional BEGIN) was found on this fragment. */
+  sawAs: boolean;
+} {
+  const asBegin = /^\s*AS\s+BEGIN\b\s*(.*)$/i.exec(tail);
+  if (asBegin) {
+    return {
+      paramText: "",
+      asHasBegin: true,
+      bodySuffix: asBegin[1].trim(),
+      sawAs: true,
+    };
   }
-  const paramText = tail.slice(0, match.index).trim();
-  const hasBegin = /BEGIN/i.test(match[0]);
-  return [paramText, hasBegin];
+  // Params … AS BEGIN [optional same-line body]
+  const asBeginMid = /\s+AS\s+BEGIN\b\s*(.*)$/i.exec(tail);
+  if (asBeginMid) {
+    return {
+      paramText: tail.slice(0, asBeginMid.index).trim(),
+      asHasBegin: true,
+      bodySuffix: asBeginMid[1].trim(),
+      sawAs: true,
+    };
+  }
+  const asOnly = /\s+AS\s*$/i.exec(tail);
+  if (!asOnly) {
+    return {
+      paramText: tail.trim(),
+      asHasBegin: false,
+      bodySuffix: "",
+      sawAs: false,
+    };
+  }
+  return {
+    paramText: tail.slice(0, asOnly.index).trim(),
+    asHasBegin: false,
+    bodySuffix: "",
+    sawAs: true,
+  };
+}
+
+/** True for BEGIN / BEGIN TRY / BEGIN CATCH — not BEGIN TRAN. */
+function isBlockBegin(line: string): boolean {
+  const t = line.trim();
+  if (/^BEGIN\s+TRAN(?:SACTION)?\b/i.test(t)) {
+    return false;
+  }
+  return /^BEGIN\b/i.test(t);
+}
+
+function isBlockEnd(line: string): boolean {
+  return /^\s*END\b/i.test(line);
+}
+
+/**
+ * Collect parameter text from following lines until AS / AS BEGIN.
+ * Also detects a lone BEGIN on the next line after AS.
+ */
+function collectParamPartsUntilAs(
+  lines: string[],
+  startIdx: number
+): {
+  paramParts: string[];
+  asHasBegin: boolean;
+  bodySuffix: string;
+  nextIdx: number;
+} {
+  const paramParts: string[] = [];
+  let asHasBegin = false;
+  let bodySuffix = "";
+  let i = startIdx;
+
+  while (i < lines.length) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+    if (trimmed === "(" || trimmed === ")") {
+      i += 1;
+      continue;
+    }
+    if (AS_LINE.test(raw)) {
+      asHasBegin = /\bBEGIN\b/i.test(raw);
+      i += 1;
+      break;
+    }
+    const closeAs = /^\s*\)\s*(AS(?:\s+BEGIN)?)\s*;?\s*$/i.exec(raw);
+    if (closeAs) {
+      asHasBegin = /\bBEGIN\b/i.test(closeAs[1]);
+      i += 1;
+      break;
+    }
+    const asBeginInline = AS_BEGIN_REST.exec(trimmed);
+    if (asBeginInline) {
+      asHasBegin = true;
+      bodySuffix = asBeginInline[1].trim();
+      i += 1;
+      break;
+    }
+    if (/^AS\b/i.test(trimmed)) {
+      const split = splitCreateTail(trimmed);
+      asHasBegin = split.asHasBegin;
+      bodySuffix = split.bodySuffix;
+      i += 1;
+      break;
+    }
+    paramParts.push(trimmed);
+    i += 1;
+  }
+
+  // AS on its own line, BEGIN on the next
+  if (!asHasBegin && i < lines.length && /^\s*BEGIN\s*;?\s*$/i.test(lines[i])) {
+    asHasBegin = true;
+    i += 1;
+  }
+
+  return { paramParts, asHasBegin, bodySuffix, nextIdx: i };
+}
+
+/** After AS without BEGIN, absorb a lone BEGIN on the next line. */
+function absorbTrailingBegin(
+  lines: string[],
+  idx: number,
+  asHasBegin: boolean
+): { asHasBegin: boolean; nextIdx: number } {
+  if (!asHasBegin && idx < lines.length && /^\s*BEGIN\s*;?\s*$/i.test(lines[idx])) {
+    return { asHasBegin: true, nextIdx: idx + 1 };
+  }
+  return { asHasBegin, nextIdx: idx };
+}
+
+/**
+ * When the procedure opened with BEGIN, consume body until the matching END
+ * (nesting-aware). The matching END is dropped; nested BEGIN/END stay.
+ */
+function takeBodyUntilMatchingEnd(
+  lines: string[],
+  startIdx: number,
+  hadProcBegin: boolean
+): { bodyLines: string[]; nextIdx: number } {
+  if (!hadProcBegin) {
+    return { bodyLines: lines.slice(startIdx), nextIdx: lines.length };
+  }
+
+  const bodyLines: string[] = [];
+  let depth = 1;
+  let i = startIdx;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (isBlockBegin(line)) {
+      depth += 1;
+      bodyLines.push(line);
+      i += 1;
+      continue;
+    }
+    if (isBlockEnd(line)) {
+      depth -= 1;
+      if (depth === 0) {
+        i += 1; // drop procedure END
+        break;
+      }
+      bodyLines.push(line);
+      i += 1;
+      continue;
+    }
+    bodyLines.push(line);
+    i += 1;
+  }
+  return { bodyLines, nextIdx: i };
 }
 
 export function convertCreateProcedureToDeclares(
@@ -325,72 +486,78 @@ export function convertCreateProcedureToDeclares(
     const indent = indentMatch ? indentMatch[1] : "";
 
     const inline = CREATE_PROC_INLINE.exec(line);
-    let paramChunks: string[] = [];
+    const paramParts: string[] = [];
     let asHasBegin = false;
     let bodySuffix = "";
+
+    i += 1;
 
     if (inline && inline[2].trim()) {
       const tail = inline[2].trim();
       const beginRest = AS_BEGIN_REST.exec(tail);
       if (beginRest) {
+        // CREATE PROC name AS BEGIN ...
         asHasBegin = true;
         bodySuffix = beginRest[1].trim();
       } else {
-        const [paramText, hasBegin] = splitCreateTail(tail);
-        asHasBegin = hasBegin;
-        if (paramText) {
-          paramChunks = splitParamList(paramText);
+        const split = splitCreateTail(tail);
+        asHasBegin = split.asHasBegin;
+        bodySuffix = split.bodySuffix;
+        if (split.paramText) {
+          paramParts.push(split.paramText);
+        }
+        // Keep reading following lines for remaining params until AS.
+        // Previously, inline first-line params stopped here and left orphans like:
+        //   DECLARE @var1 int;
+        //                         @var2 int,
+        //                         @var3 int output
+        if (!split.sawAs) {
+          const more = collectParamPartsUntilAs(lines, i);
+          paramParts.push(...more.paramParts);
+          asHasBegin = more.asHasBegin;
+          if (more.bodySuffix) {
+            bodySuffix = more.bodySuffix;
+          }
+          i = more.nextIdx;
         }
       }
-      i += 1;
     } else {
-      i += 1;
-      const paramParts: string[] = [];
-      while (i < lines.length) {
-        const raw = lines[i];
-        const trimmed = raw.trim();
-        // Opening/closing paren alone (common around param lists) — skip.
-        if (trimmed === "(" || trimmed === ")") {
-          i += 1;
-          continue;
-        }
-        if (AS_LINE.test(raw)) {
-          asHasBegin = /\bBEGIN\b/i.test(raw);
-          i += 1;
-          break;
-        }
-        // Line like ") AS" / ") AS BEGIN" — treat as AS, drop the paren.
-        const closeAs = /^\s*\)\s*(AS(?:\s+BEGIN)?)\s*;?\s*$/i.exec(raw);
-        if (closeAs) {
-          asHasBegin = /\bBEGIN\b/i.test(closeAs[1]);
-          i += 1;
-          break;
-        }
-        paramParts.push(trimmed);
-        i += 1;
-      }
-      paramChunks = splitParamList(paramParts.join(" "));
+      const more = collectParamPartsUntilAs(lines, i);
+      paramParts.push(...more.paramParts);
+      asHasBegin = more.asHasBegin;
+      bodySuffix = more.bodySuffix;
+      i = more.nextIdx;
     }
 
-    const params = parseParameterChunks(paramChunks);
+    // CREATE … AS\nBEGIN — BEGIN may still be pending when AS was on the CREATE line.
+    {
+      const abs = absorbTrailingBegin(lines, i, asHasBegin);
+      asHasBegin = abs.asHasBegin;
+      i = abs.nextIdx;
+    }
+
+    const params = parseParameterChunks(splitParamList(paramParts.join(" ")));
     const declareLines = declareLinesForParams(procName, params, indent);
     emitLog(
       onDetail,
       "convertCreateProcedureToDeclares",
-      `  line ${lineNo}: CREATE PROCEDURE ${procName} -> ${params.length} parameter DECLARE(s), as_begin=${asHasBegin}`
+      `  line ${lineNo}: CREATE PROCEDURE ${procName} -> ${params.length} parameter DECLARE(s), strip_begin_end=${asHasBegin}`
     );
     out.push(...declareLines);
     conversions += 1;
 
-    if (asHasBegin) {
-      out.push(`${indent}BEGIN`);
-      if (bodySuffix) {
-        out.push(indent ? `${indent}${bodySuffix}` : bodySuffix);
-      }
-    } else if (i < lines.length && lines[i].trim().toUpperCase() === "BEGIN") {
-      out.push(lines[i]);
-      i += 1;
+    if (bodySuffix) {
+      out.push(indent ? `${indent}${bodySuffix}` : bodySuffix);
     }
+
+    // Do not re-emit AS BEGIN / BEGIN. Consume body and drop the matching END.
+    const { bodyLines, nextIdx } = takeBodyUntilMatchingEnd(
+      lines,
+      i,
+      asHasBegin
+    );
+    out.push(...bodyLines);
+    i = nextIdx;
   }
 
   emitLog(

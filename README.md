@@ -75,14 +75,11 @@ Optional: **Analyze Procedure** shows Summary / Warnings / Identified in the Wor
 
 ---
 
-## What’s new in 0.0.2
+## What’s new in 0.0.3
 
-- Procedure parameter conversion supports parenthesized lists and `OUTPUT` / `OUT` parameters, and emits one valid comma-separated `DECLARE`.
-- The sidebar tracks recently analyzed and debugged procedures; the Workbench History button opens them through Quick Pick.
-- Identified results are grouped by Kind with collapsible sections.
-- Analysis and Activity Log collapse from their full headers without changing panel order.
-- The Workbench opens as a normal tab, uses horizontally scrolling SQL previews, and has distinct SVG toolbar icons.
-- `spDebug.workbenchToolbarStyle` switches between icons with text, icons only, and text only.
+- Variable traces default to `SELECT 'DBG' [NOTES], @var [var], …`; choose `print`, `printCombined`, or `raiserror` via `spDebug.traceStyle`.
+- Procedure headers with an inline first-line parameter keep the full multi-line list in one `DECLARE`; `AS BEGIN` / outer `END` are stripped.
+- Workbench **Save** is a single popover (analysis, debug script, log, open debug); **Clear** wipes generated output without regenerating.
 
 See the full [change history](docs/change-history.html).
 
@@ -112,7 +109,7 @@ The **Workbench** shows:
 
 Panes are **resizable** (drag the splitters). Click the full Analysis or Active Log header to collapse it; panel order and collapse state are preserved. Source and Debug previews use **T-SQL syntax highlighting**, theme colors, and horizontal scrolling for long lines.
 
-From the toolbar you can open **History**, **Analyze**, **Generate Debug**, and **save each artifact individually** (analysis `.txt`, debug `.sql`, log `.log`), or open the debug script in a normal editor tab.
+From the toolbar you can open **History**, **Analyze**, **Generate**, **Clear** generated output, and use **Save** for analysis `.txt`, debug `.sql`, log `.log`, or open the debug script in an editor tab.
 
 Available from the **SQL Debug Harness** right-click submenu on `.sql` files and from the Command Palette. Non-empty editor selections are used when present.
 
@@ -120,7 +117,7 @@ Available from the **SQL Debug Harness** right-click submenu on `.sql` files and
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `spDebug.traceStyle` | `print` | `print` or `raiserror` for variable traces |
+| `spDebug.traceStyle` | `select` | `select`, `print`, `printCombined`, or `raiserror` for variable traces |
 | `spDebug.logToOutput` | `true` | Show step log in the **SQL Debug Harness** output channel |
 | `spDebug.saveLogFile` | `false` | Also write `<proc>.log` beside the source `.sql` |
 | `spDebug.quietWhenLogging` | `true` | Avoid duplicating progress lines when the step log is enabled |
@@ -162,7 +159,7 @@ npx sql-debug-harness version
 |------|---------|
 | `-i` / `--input` | Input `.sql` path, or `-` for stdin |
 | `-o` / `--output` | Output path for `generate` (default: stdout) |
-| `--trace-style` | `print` (default) or `raiserror` |
+| `--trace-style` | `select` (default), `print`, `printCombined`, or `raiserror` |
 
 (When developing from this repo: `npm run compile && node out/cli.js generate -i …`.)
 

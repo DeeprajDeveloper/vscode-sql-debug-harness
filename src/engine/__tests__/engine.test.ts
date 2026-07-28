@@ -121,6 +121,67 @@ describe("pass-through and errors", () => {
     expect(result.sql).toContain("INSERT to table dbo.AuditLog");
     expect(result.sql).toMatch(/PRINT CONCAT\(N'\[DBG\] @IsSuccess/);
   });
+
+  test("default trace style emits SELECT traces", () => {
+    const sql = `
+CREATE PROCEDURE dbo.usp_Trace
+AS
+BEGIN
+    SET @A = 1;
+    SELECT @B = 2, @C = 3;
+END
+`.trim();
+    const result = generate(sql);
+    expect(result.sql).toMatch(/SELECT 'DBG' \[NOTES\], @A \[A\];/);
+    expect(result.sql).toMatch(
+      /SELECT 'DBG' \[NOTES\], @B \[B\], @C \[C\];/
+    );
+    expect(result.sql).not.toMatch(/PRINT CONCAT\(N'\[DBG\] @A/);
+  });
+});
+
+describe("variable trace styles", () => {
+  const traceSql = `
+CREATE PROCEDURE dbo.usp_Trace
+AS
+BEGIN
+    SET @A = 1;
+    SELECT @B = 2, @C = 3;
+END
+`.trim();
+
+  test("select: one SELECT per assignment site", () => {
+    const result = generate(traceSql, { traceStyle: "select" });
+    expect(result.sql).toMatch(/SELECT 'DBG' \[NOTES\], @A \[A\];/);
+    expect(result.sql).toMatch(
+      /SELECT 'DBG' \[NOTES\], @B \[B\], @C \[C\];/
+    );
+  });
+
+  test("print: one PRINT per variable", () => {
+    const result = generate(traceSql, { traceStyle: "print" });
+    expect(result.sql).toMatch(/PRINT CONCAT\(N'\[DBG\] @A = '/);
+    expect(result.sql).toMatch(/PRINT CONCAT\(N'\[DBG\] @B = '/);
+    expect(result.sql).toMatch(/PRINT CONCAT\(N'\[DBG\] @C = '/);
+    expect(result.sql).not.toMatch(/SELECT 'DBG' \[NOTES\]/);
+  });
+
+  test("printCombined: multi-assign SELECT uses one PRINT", () => {
+    const result = generate(traceSql, { traceStyle: "printCombined" });
+    expect(result.sql).toMatch(/PRINT CONCAT\(N'\[DBG\] @A = '/);
+    expect(result.sql).toMatch(
+      /PRINT CONCAT\(N'\[DBG\] @B = ', CAST\(@B AS NVARCHAR\(4000\)\), N'; @C = ', CAST\(@C AS NVARCHAR\(4000\)\)\);/
+    );
+    const printLines = result.sql.match(/^\s*PRINT CONCAT/mg) ?? [];
+    expect(printLines.length).toBe(2);
+  });
+
+  test("raiserror: one RAISERROR per variable", () => {
+    const result = generate(traceSql, { traceStyle: "raiserror" });
+    expect(result.sql).toMatch(/RAISERROR\(N'\[DBG\] @A = %s'/);
+    expect(result.sql).toMatch(/RAISERROR\(N'\[DBG\] @B = %s'/);
+    expect(result.sql).toMatch(/RAISERROR\(N'\[DBG\] @C = %s'/);
+  });
 });
 
 describe("CREATE PROCEDURE → DECLARE", () => {
@@ -139,6 +200,9 @@ END
     expect(result.sql).toMatch(/@Name NVARCHAR\(100\) = NULL;/);
     expect(result.sql).not.toMatch(/DECLARE @Id INT = NULL;\s*\n\s*DECLARE @Name/);
     expect(result.sql).not.toMatch(/INT; =/);
+    expect(result.sql).not.toMatch(/^\s*BEGIN\s*$/m);
+    expect(result.sql).not.toMatch(/^\s*END\s*$/m);
+    expect(result.sql).toContain("SELECT @Id, @Name;");
   });
 
   test("OUTPUT / OUT params are stripped from type and annotated", () => {
@@ -179,6 +243,48 @@ END
     expect(result.sql).toMatch(/@B VARCHAR\(20\) = NULL;/);
     expect(result.sql).not.toMatch(/INT; =/);
     expect(result.sql).not.toMatch(/VARCHAR\(20\); =/);
+  });
+
+  test("inline first-line params continue onto following lines until AS", () => {
+    const sql = `
+CREATE PROCEDURE dbo.usp_Inline @var1 int, 
+                                      @var2 int,
+                                      @var3 int output
+AS BEGIN
+    SELECT @var1, @var2, @var3;
+END
+`.trim();
+    const result = generate(sql);
+    expect(result.sql).toMatch(/DECLARE @var1 int = NULL,/);
+    expect(result.sql).toMatch(/@var2 int = NULL,/);
+    expect(result.sql).toMatch(/@var3 int = NULL;/);
+    expect(result.sql).toMatch(/-- OUTPUT/);
+    expect(result.sql).not.toMatch(/^\s*@var2 int,/m);
+    expect(result.sql).not.toMatch(/^\s*@var3 int output/m);
+    expect(result.sql).not.toMatch(/AS\s+BEGIN/i);
+    expect(result.sql).not.toMatch(/^\s*BEGIN\s*$/m);
+    expect(result.sql).not.toMatch(/^\s*END\s*$/m);
+    expect(result.sql).toContain("SELECT @var1, @var2, @var3;");
+  });
+
+  test("nested BEGIN/END inside body are preserved while procedure END is stripped", () => {
+    const sql = `
+CREATE PROCEDURE dbo.usp_Nested
+    @Id INT
+AS
+BEGIN
+    BEGIN
+        SELECT @Id;
+    END
+END
+`.trim();
+    const result = generate(sql);
+    expect(result.sql).toMatch(/DECLARE @Id INT = NULL;/);
+    expect(result.sql).toMatch(/^\s*BEGIN\s*$/m);
+    expect(result.sql).toContain("SELECT @Id;");
+    expect(result.sql).toMatch(/^\s*END\s*$/m);
+    // Only one END remains (the nested one), not two.
+    expect(result.sql.match(/^\s*END\s*$/gm)?.length).toBe(1);
   });
 });
 
