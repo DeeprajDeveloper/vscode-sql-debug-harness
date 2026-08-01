@@ -26,7 +26,7 @@ import type {
   TransformResult,
   TransformStats,
 } from "./types";
-import { emitLog, StepLogCollector, truncateForLog } from "./log";
+import { emitLog, StepLogCollector, truncateForLog, inferLogLevel } from "./log";
 
 function emptyStats(warnings: string[] = []): TransformStats {
   return {
@@ -557,9 +557,9 @@ export function transformSql(
   options: GenerateOptions = {}
 ): TransformResult {
   const collector = new StepLogCollector();
-  const onLog: LogCallback = (fn, msg) => {
-    collector.info(fn, msg);
-    options.onLog?.(fn, msg);
+  const onLog: LogCallback = (fn, msg, level) => {
+    collector.push(level ?? inferLogLevel(msg), fn, msg);
+    options.onLog?.(fn, msg, level);
   };
   const onProgress = options.onProgress;
   const traceStyle = options.traceStyle ?? "select";

@@ -11,8 +11,10 @@ export type {
   AnalyzeSummaryRow,
   AnalyzeWarningRow,
   GenerateOptions,
+  LogLevel,
   TraceStyle,
   TransformResult,
   TransformStats,
   InventoryCounts,
 } from "./types";
+export { parseStepLogLine, formatStepLogLine } from "./log";

@@ -23,7 +23,7 @@ import type {
   InventoryCounts,
   LogCallback,
 } from "./types";
-import { emitLog, StepLogCollector } from "./log";
+import { emitLog, StepLogCollector, inferLogLevel } from "./log";
 
 const COUNT_SECTIONS: Array<[string, keyof InventoryCounts]> = [
   ["INSERT", "insert"],
@@ -288,9 +288,9 @@ export function analyze(
   options?: { onLog?: LogCallback }
 ): AnalyzeReport {
   const collector = new StepLogCollector();
-  const onDetail: LogCallback = (fn, msg) => {
-    collector.info(fn, msg);
-    options?.onLog?.(fn, msg);
+  const onDetail: LogCallback = (fn, msg, level) => {
+    collector.push(level ?? inferLogLevel(msg), fn, msg);
+    options?.onLog?.(fn, msg, level);
   };
   onDetail("analyze", "Running inventory analysis (text scan + optional AST)");
   const inv = inventoryFromSql(sql, onDetail);

@@ -2,7 +2,14 @@
 
 export type TraceStyle = "select" | "print" | "printCombined" | "raiserror";
 
-export type LogCallback = (functionName: string, message: string) => void;
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+/** Optional third arg is log level; collectors default via inference when omitted. */
+export type LogCallback = (
+  functionName: string,
+  message: string,
+  level?: LogLevel
+) => void;
 
 export interface TransformStats {
   dmlStubbed: number;

@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
-import { analyze, generate, type AnalyzeReport } from "./engine";
+import { analyze, generate, parseStepLogLine, type AnalyzeReport } from "./engine";
 import type { SqlSourceContext } from "./sqlSource";
 import { getSpDebugSettings, type WorkbenchToolbarStyle } from "./settings";
 import { highlightTsql } from "./sqlHighlight";
@@ -148,6 +148,62 @@ function realWarnings(report: AnalyzeReport) {
   );
 }
 
+function renderActivityLog(stepLog: string[]): string {
+  if (!stepLog.length) {
+    return `<p class="empty pane-empty">Step log appears here after Analyze or Generate.</p>`;
+  }
+
+  const counts: Record<string, number> = {
+    debug: 0,
+    info: 0,
+    warn: 0,
+    error: 0,
+  };
+  const rows = stepLog
+    .map((raw) => {
+      const { level, functionName, message } = parseStepLogLine(raw);
+      if (level in counts) {
+        counts[level] += 1;
+      }
+      return `<tr class="log-row log-level-${escapeHtml(level)}" data-level="${escapeHtml(level)}">
+        <td class="log-col-level"><span class="log-badge log-badge-${escapeHtml(level)}">${escapeHtml(level.toUpperCase())}</span></td>
+        <td class="log-col-fn" title="${escapeHtml(functionName)}">${escapeHtml(functionName)}</td>
+        <td class="log-col-msg">${escapeHtml(message)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const filterBtns = (["debug", "info", "warn", "error"] as const)
+    .map((level) => {
+      const count = counts[level];
+      const disabled = count === 0 ? "disabled" : "";
+      return `<button type="button" class="log-filter is-active" data-level="${level}" aria-pressed="true" title="Toggle ${level.toUpperCase()} lines" ${disabled}>
+        <span class="log-badge log-badge-${level}">${level.toUpperCase()}</span>
+        <span class="log-filter-count">${count}</span>
+      </button>`;
+    })
+    .join("");
+
+  return `<div class="log-toolbar" id="log-filters" role="group" aria-label="Filter log levels">
+      <span class="log-toolbar-label">Levels</span>
+      ${filterBtns}
+      <button type="button" class="log-filter-action" id="log-filter-all" title="Show all levels">All</button>
+      <button type="button" class="log-filter-action" id="log-filter-none" title="Hide all levels">None</button>
+      <span class="log-filter-status" id="log-filter-status">${stepLog.length} shown</span>
+    </div>
+    <table class="log-table" id="log-table" role="table" aria-label="Activity log">
+      <thead>
+        <tr>
+          <th class="log-col-level">Level</th>
+          <th class="log-col-fn">Function</th>
+          <th class="log-col-msg">Message</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p class="empty pane-empty log-filter-empty" id="log-filter-empty" hidden>No log lines match the selected levels.</p>`;
+}
+
 function hasSource(s: WorkbenchState): boolean {
   return Boolean(s.source && s.source.source.trim().length > 0);
 }
@@ -264,7 +320,7 @@ function buildHtml(s: WorkbenchState): string {
   const hasDebug = Boolean(s.debugSql);
   const hasLog = s.stepLog.length > 0;
   const analysisHtml = renderAnalysisPanel(s.report);
-  const logText = hasLog ? escapeHtml(s.stepLog.join("\n")) : "";
+  const logHtml = renderActivityLog(s.stepLog);
   const toolbarStyle = getSpDebugSettings().workbenchToolbarStyle;
 
   const hasAnythingToSave = hasAnalysis || hasDebug || hasLog;
@@ -719,6 +775,143 @@ function buildHtml(s: WorkbenchState): string {
       border-radius: var(--radius);
       border: 1px solid var(--border);
     }
+    .log-table {
+      width: 100%;
+      min-width: 520px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-family: var(--mono);
+      font-size: calc(var(--efs) * 0.92);
+      line-height: 1.4;
+      color: var(--fg);
+      background: var(--code-bg);
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+    }
+    .log-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 8px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--pane-bg);
+    }
+    .log-toolbar-label {
+      font-size: 0.78em;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-right: 2px;
+    }
+    .log-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--fg);
+      font: inherit;
+      padding: 3px 7px;
+      cursor: pointer;
+      opacity: 0.45;
+    }
+    .log-filter:hover:not(:disabled) { background: var(--list-hover); opacity: 0.85; }
+    .log-filter.is-active { opacity: 1; border-color: var(--focus); background: var(--code-bg); }
+    .log-filter:disabled { opacity: 0.28; cursor: not-allowed; }
+    .log-filter-count {
+      font-family: var(--mono);
+      font-size: 0.78em;
+      color: var(--muted);
+      min-width: 1.2em;
+      text-align: center;
+    }
+    .log-filter-action {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--btn2-bg);
+      color: var(--btn2-fg);
+      font: inherit;
+      font-size: 0.82em;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    .log-filter-action:hover { background: var(--btn2-hover); }
+    .log-filter-status {
+      margin-left: auto;
+      font-size: 0.82em;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    .log-row.is-filtered-out { display: none; }
+    .log-table th,
+    .log-table td {
+      text-align: left;
+      padding: 5px 10px;
+      border-top: 1px solid transparent;
+      vertical-align: top;
+    }
+    .log-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-weight: 600;
+      font-size: 0.78em;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--pane-bg);
+      border-top: 1px solid transparent;
+      border-bottom: 1px solid transparent;
+    }
+    .log-table tbody tr:hover { background: var(--list-hover); }
+    .log-col-level { width: 5.5em; white-space: nowrap; }
+    .log-col-fn {
+      width: 14em;
+      max-width: 18em;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .log-col-msg { word-break: break-word; white-space: pre-wrap; }
+    .log-badge {
+      display: inline-block;
+      font-size: 0.72em;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      padding: 3px 6px;
+      border-radius: 3px;
+      border: 1px solid transparent;
+    }
+    .log-badge-debug {
+      color: var(--muted);
+      background: rgba(127,127,127,0.14);
+      border-color: rgba(127,127,127,0.28);
+    }
+    .log-badge-info {
+      color: var(--vscode-debugIcon-infoForeground, #3794ff);
+      background: color-mix(in srgb, var(--vscode-debugIcon-infoForeground, #3794ff) 16%, transparent);
+      border-color: color-mix(in srgb, var(--vscode-debugIcon-infoForeground, #3794ff) 40%, transparent);
+    }
+    .log-badge-warn {
+      color: #fff;
+      background: var(--warn-bg);
+      border-color: var(--warn-bd);
+    }
+    .log-badge-error {
+      color: #fff;
+      background: var(--err-bg);
+      border-color: color-mix(in srgb, var(--vscode-errorForeground, #f14c4c) 45%, transparent);
+    }
+    .log-row.log-level-warn .log-col-msg { color: var(--vscode-editorWarning-foreground, var(--fg)); }
+    .log-row.log-level-error .log-col-msg { color: var(--vscode-errorForeground, var(--fg)); }
+    .log-row.log-level-debug .log-col-msg { color: var(--muted); }
     .code-preview {
       margin: 0;
       font-family: var(--mono);
@@ -873,11 +1066,7 @@ function buildHtml(s: WorkbenchState): string {
           </span>
         </div>
         <div class="pane-body" id="log-body">
-          ${
-            hasLog
-              ? `<pre class="log">${logText}</pre>`
-              : `<p class="empty pane-empty">Step log appears here after Analyze or Generate.</p>`
-          }
+          ${logHtml}
         </div>
       </section>
     </div>
@@ -945,6 +1134,97 @@ function buildHtml(s: WorkbenchState): string {
         if (!isNaN(line)) post('gotoLine', { line });
       });
     });
+
+    /* ---- activity log level filters ---- */
+    (function initLogFilters() {
+      const toolbar = document.getElementById('log-filters');
+      const table = document.getElementById('log-table');
+      const emptyEl = document.getElementById('log-filter-empty');
+      const statusEl = document.getElementById('log-filter-status');
+      const headerStatus = document.querySelector('#header-log .status');
+      if (!toolbar || !table) return;
+
+      const LEVELS = ['debug', 'info', 'warn', 'error'];
+      const defaults = { debug: true, info: true, warn: true, error: true };
+      const filters = Object.assign({}, defaults, saved.logLevelFilters || {});
+
+      function persist() {
+        const st = vscode.getState() || {};
+        st.logLevelFilters = {
+          debug: !!filters.debug,
+          info: !!filters.info,
+          warn: !!filters.warn,
+          error: !!filters.error,
+        };
+        vscode.setState(st);
+      }
+
+      function apply() {
+        let shown = 0;
+        let total = 0;
+        table.querySelectorAll('tbody tr.log-row').forEach((row) => {
+          total += 1;
+          const level = row.dataset.level || 'info';
+          const visible = filters[level] !== false;
+          row.classList.toggle('is-filtered-out', !visible);
+          if (visible) shown += 1;
+        });
+        toolbar.querySelectorAll('.log-filter[data-level]').forEach((btn) => {
+          const level = btn.dataset.level;
+          const on = filters[level] !== false && !btn.disabled;
+          btn.classList.toggle('is-active', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        if (emptyEl) emptyEl.hidden = shown > 0 || total === 0;
+        if (table) table.hidden = shown === 0 && total > 0;
+        if (statusEl) {
+          statusEl.textContent = shown === total ? total + ' shown' : shown + ' / ' + total + ' shown';
+        }
+        if (headerStatus) {
+          headerStatus.textContent =
+            shown === total
+              ? total + ' line(s)'
+              : shown + ' / ' + total + ' line(s)';
+        }
+      }
+
+      toolbar.querySelectorAll('.log-filter[data-level]').forEach((btn) => {
+        const level = btn.dataset.level;
+        // Restore saved pressed state before first apply
+        if (filters[level] === false) {
+          btn.classList.remove('is-active');
+          btn.setAttribute('aria-pressed', 'false');
+        }
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          if (btn.disabled) return;
+          filters[level] = !filters[level];
+          persist();
+          apply();
+        });
+      });
+
+      const allBtn = document.getElementById('log-filter-all');
+      const noneBtn = document.getElementById('log-filter-none');
+      if (allBtn) {
+        allBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          LEVELS.forEach((l) => { filters[l] = true; });
+          persist();
+          apply();
+        });
+      }
+      if (noneBtn) {
+        noneBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          LEVELS.forEach((l) => { filters[l] = false; });
+          persist();
+          apply();
+        });
+      }
+
+      apply();
+    })();
 
     /* ---- analysis tabs ---- */
     (function initAnalysisTabs() {
