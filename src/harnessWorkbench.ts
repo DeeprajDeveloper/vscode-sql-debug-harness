@@ -7,6 +7,7 @@ import { getSpDebugSettings, type WorkbenchToolbarStyle } from "./settings";
 import { highlightTsql } from "./sqlHighlight";
 import { recordHistory } from "./history";
 import { showHarnessHistory } from "./harnessSidebar";
+import { diffSqlForCompare, type DiffRow } from "./sqlDiff";
 
 export type WorkbenchState = {
   source?: SqlSourceContext;
@@ -71,6 +72,10 @@ const TOOLBAR_ICONS = {
   open: iconSvg(
     `<path d="M216 112v96a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8V48a8 8 0 0 1 8-8h96"/><polyline points="144 32 224 32 224 112"/><line x1="112" y1="144" x2="224" y2="32"/>`
   ),
+  /** Columns — side-by-side compare */
+  compare: iconSvg(
+    `<rect x="32" y="48" width="72" height="160" rx="8"/><rect x="152" y="48" width="72" height="160" rx="8"/><line x1="128" y1="80" x2="128" y2="176"/>`
+  ),
   /** CaretDown — menu indicator */
   caret: iconSvg(`<polyline points="80 104 128 152 176 104"/>`),
 } as const;
@@ -132,6 +137,48 @@ function renderSqlPreview(sql: string): string {
     })
     .join("");
   return `<div class="sql code-preview" role="region">${rows}</div>`;
+}
+
+function renderDiffSide(
+  rows: DiffRow[],
+  side: "left" | "right"
+): string {
+  let displayNum = 0;
+  const html = rows
+    .map((row) => {
+      const text = side === "left" ? row.left : row.right;
+      const isGap =
+        (side === "left" && row.kind === "add") ||
+        (side === "right" && row.kind === "remove");
+      if (isGap || text === undefined) {
+        return `<div class="code-line diff-gap" aria-hidden="true"><span class="ln"></span><code class="lc">&nbsp;</code></div>`;
+      }
+      displayNum += 1;
+      const kindClass =
+        row.kind === "equal"
+          ? "diff-equal"
+          : row.kind === "add"
+            ? "diff-add"
+            : "diff-remove";
+      const marker =
+        row.kind === "add" ? "+" : row.kind === "remove" ? "−" : " ";
+      const highlighted = highlightTsql(text);
+      return `<div class="code-line ${kindClass}"><span class="ln" aria-hidden="true">${displayNum}</span><span class="diff-mark" aria-hidden="true">${marker}</span><code class="lc">${highlighted || "&nbsp;"}</code></div>`;
+    })
+    .join("");
+  return `<div class="sql code-preview diff-preview" role="region">${html}</div>`;
+}
+
+function renderCompareViews(
+  source: string,
+  debugSql: string
+): { leftHtml: string; rightHtml: string; status: string } {
+  const { rows, stats } = diffSqlForCompare(source, debugSql);
+  return {
+    leftHtml: renderDiffSide(rows, "left"),
+    rightHtml: renderDiffSide(rows, "right"),
+    status: `−${stats.removed} / +${stats.added}  ·  ${stats.equal} unchanged (noise filtered)`,
+  };
 }
 
 function emptySource(): SqlSourceContext {
@@ -316,6 +363,10 @@ function buildHtml(s: WorkbenchState): string {
   const loaded = hasSource(s);
   const sourceSqlHtml = loaded ? renderSqlPreview(src.source) : "";
   const debugSqlHtml = s.debugSql ? renderSqlPreview(s.debugSql) : "";
+  const canCompare = loaded && Boolean(s.debugSql);
+  const compare = canCompare
+    ? renderCompareViews(src.source, s.debugSql!)
+    : null;
   const hasAnalysis = Boolean(s.report);
   const hasDebug = Boolean(s.debugSql);
   const hasLog = s.stepLog.length > 0;
@@ -959,6 +1010,68 @@ function buildHtml(s: WorkbenchState): string {
       font-size: inherit;
       background: transparent;
     }
+    .diff-mark {
+      flex: 0 0 auto;
+      width: 1.1em;
+      text-align: center;
+      font-weight: 700;
+      user-select: none;
+      opacity: 0.9;
+    }
+    .code-line.diff-add {
+      background: color-mix(in srgb, var(--vscode-diffEditor-insertedLineBackground, rgba(155,185,85,0.28)) 100%, transparent);
+    }
+    .code-line.diff-add .diff-mark {
+      color: var(--vscode-gitDecoration-addedResourceForeground, #3fb950);
+    }
+    .code-line.diff-remove {
+      background: color-mix(in srgb, var(--vscode-diffEditor-removedLineBackground, rgba(255,0,0,0.18)) 100%, transparent);
+    }
+    .code-line.diff-remove .diff-mark {
+      color: var(--vscode-gitDecoration-deletedResourceForeground, #f85149);
+    }
+    .code-line.diff-gap {
+      background: rgba(127,127,127,0.06);
+      min-height: 1.45em;
+    }
+    .code-line.diff-gap .lc { opacity: 0; }
+    .diff-legend {
+      font-size: 0.78em;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .diff-legend-add {
+      color: var(--vscode-gitDecoration-addedResourceForeground, #3fb950);
+      background: color-mix(in srgb, var(--vscode-diffEditor-insertedLineBackground, rgba(155,185,85,0.35)) 100%, transparent);
+    }
+    .diff-legend-remove {
+      color: var(--vscode-gitDecoration-deletedResourceForeground, #f85149);
+      background: color-mix(in srgb, var(--vscode-diffEditor-removedLineBackground, rgba(255,0,0,0.22)) 100%, transparent);
+    }
+    .pane-title-wrap { display: inline-flex; align-items: center; min-width: 0; }
+    #row-top[data-compare="true"] .pane-title-normal,
+    #row-top[data-compare="true"] .view-normal { display: none !important; }
+    #row-top[data-compare="true"] .pane-title-compare {
+      display: inline-flex !important;
+      align-items: center;
+    }
+    #row-top[data-compare="true"] .view-compare { display: block !important; }
+    #row-top[data-compare="false"] .pane-title-compare,
+    #row-top[data-compare="false"] .view-compare { display: none !important; }
+    #row-top[data-compare="false"] .pane-title-normal,
+    #row-top[data-compare="false"] .view-normal { display: block; }
+    .btn.compare-on {
+      outline: 1px solid var(--focus);
+      background: var(--btn-hover);
+    }
+    .btn.secondary.compare-on {
+      background: var(--btn2-hover);
+    }
     .tok-keyword { color: var(--vscode-symbolIcon-keywordForeground, var(--vscode-charts-purple, #c586c0)); font-weight: 600; }
     .tok-type { color: var(--vscode-symbolIcon-typeParameterForeground, var(--vscode-charts-blue, #4ec9b0)); }
     .tok-string { color: var(--vscode-debugTokenExpression-string, var(--vscode-charts-orange, #ce9178)); }
@@ -1007,6 +1120,7 @@ function buildHtml(s: WorkbenchState): string {
       ${btn("btn-load-active", "Load Active SQL", "Load the active SQL editor", "file", { secondary: true })}
       ${btn("btn-analyze", "Analyze Script", "Analyze the loaded procedure", "analyze", { disabled: !loaded })}
       ${btn("btn-generate", "Generate Debug Script", "Generate a safe debug harness script", "debug", { disabled: !loaded })}
+      ${btn("btn-compare", "Compare", "Highlight additions and removals between source and debug script (banner/blank/comment noise filtered)", "compare", { secondary: true, disabled: !canCompare })}
       ${btn("btn-clear", "Clear", "Clear generated debug script, analysis, and activity log", "clear", { secondary: true, disabled: !(hasDebug || hasAnalysis || hasLog) })}
     </div>
     <div class="toolbar-right">
@@ -1015,24 +1129,52 @@ function buildHtml(s: WorkbenchState): string {
   </div>
 
   <div class="workspace" id="workspace">
-    <div class="row-top" id="row-top">
+    <div class="row-top" id="row-top" data-compare="false">
       <section class="pane source" id="pane-source">
-        <div class="pane-header"><span>Source</span><span class="status">${loaded ? "file / selection" : "empty — select a .sql file"}</span></div>
+        <div class="pane-header">
+          <span class="pane-title-wrap">
+            <span class="pane-title-normal">Source</span>
+            <span class="pane-title-compare" hidden>Source <span class="diff-legend diff-legend-remove">removed</span></span>
+          </span>
+          <span class="status" id="source-status"
+            data-status-normal="${loaded ? "file / selection" : "empty — select a .sql file"}"
+            data-status-compare="${loaded ? "aligned · removals highlighted" : "empty — select a .sql file"}"
+          >${loaded ? "file / selection" : "empty — select a .sql file"}</span>
+        </div>
         <div class="pane-body" id="source-body">
           ${
             loaded
-              ? sourceSqlHtml
+              ? `<div class="view-normal">${sourceSqlHtml}</div>
+                 ${
+                   compare
+                     ? `<div class="view-compare" hidden>${compare.leftHtml}</div>`
+                     : ""
+                 }`
               : `<div class="empty-hint"><strong>No SQL loaded. </strong><br><strong>Select File…</strong> from the workspace, or <strong>Load Active SQL file</strong> from the open editor</div>`
           }
         </div>
       </section>
       <div class="v-split" id="split-source-debug" title="Drag to resize"></div>
       <section class="pane debug" id="pane-debug">
-        <div class="pane-header"><span>Generated Debug Script</span><span class="status">${hasDebug ? "generated" : "not generated"}</span></div>
-        <div class="pane-body">
+        <div class="pane-header">
+          <span class="pane-title-wrap">
+            <span class="pane-title-normal">Generated Debug Script</span>
+            <span class="pane-title-compare" hidden>Debug script <span class="diff-legend diff-legend-add">added</span></span>
+          </span>
+          <span class="status" id="debug-status"
+            data-status-normal="${hasDebug ? "generated" : "not generated"}"
+            data-status-compare="${hasDebug && compare ? escapeHtml(compare.status) : hasDebug ? "generated" : "not generated"}"
+          >${hasDebug ? "generated" : "not generated"}</span>
+        </div>
+        <div class="pane-body" id="debug-body">
           ${
             hasDebug
-              ? debugSqlHtml
+              ? `<div class="view-normal">${debugSqlHtml}</div>
+                 ${
+                   compare
+                     ? `<div class="view-compare" hidden>${compare.rightHtml}</div>`
+                     : ""
+                 }`
               : `<p class="empty pane-empty">Click on <strong>Generate Debug Script</strong> button to produce a debug harness script here.</p>`
           }
         </div>
@@ -1088,6 +1230,64 @@ function buildHtml(s: WorkbenchState): string {
     document.getElementById('btn-analyze').addEventListener('click', () => post('analyze'));
     document.getElementById('btn-generate').addEventListener('click', () => post('generate'));
     document.getElementById('btn-clear').addEventListener('click', () => post('clear'));
+
+    (function initCompareToggle() {
+      const btn = document.getElementById('btn-compare');
+      const rowTop = document.getElementById('row-top');
+      const sourceBody = document.getElementById('source-body');
+      const debugBody = document.getElementById('debug-body');
+      if (!btn || !rowTop || btn.disabled) return;
+
+      let compareOn = saved.compareMode === true;
+      // Only restore if compare views exist
+      if (!rowTop.querySelector('.view-compare')) {
+        compareOn = false;
+      }
+
+      function syncScroll(from, to) {
+        if (!from || !to) return;
+        to.scrollTop = from.scrollTop;
+        to.scrollLeft = from.scrollLeft;
+      }
+
+      let syncing = false;
+      function bindScrollSync(a, b) {
+        if (!a || !b) return;
+        a.addEventListener('scroll', () => {
+          if (syncing || rowTop.getAttribute('data-compare') !== 'true') return;
+          syncing = true;
+          syncScroll(a, b);
+          syncing = false;
+        });
+      }
+      bindScrollSync(sourceBody, debugBody);
+      bindScrollSync(debugBody, sourceBody);
+
+      function apply() {
+        rowTop.setAttribute('data-compare', compareOn ? 'true' : 'false');
+        btn.classList.toggle('compare-on', compareOn);
+        btn.setAttribute('aria-pressed', compareOn ? 'true' : 'false');
+        ['source-status', 'debug-status'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const value = compareOn
+            ? el.getAttribute('data-status-compare')
+            : el.getAttribute('data-status-normal');
+          if (value !== null) el.textContent = value;
+        });
+        const st = vscode.getState() || {};
+        st.compareMode = compareOn;
+        vscode.setState(st);
+      }
+
+      btn.setAttribute('aria-pressed', 'false');
+      btn.addEventListener('click', () => {
+        if (btn.disabled) return;
+        compareOn = !compareOn;
+        apply();
+      });
+      apply();
+    })();
 
     (function initSaveMenu() {
       const wrap = document.getElementById('save-menu-wrap');

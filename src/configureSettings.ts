@@ -24,7 +24,7 @@ const SETTING_DEFS: SettingDef[] = [
   },
   {
     key: "__divider_generate__",
-    label: "— Generate —",
+    label: "<< Generate",
     detail: "",
     kind: "string",
     isDivider: true,
@@ -32,13 +32,13 @@ const SETTING_DEFS: SettingDef[] = [
   {
     key: "traceStyle",
     label: "Trace style",
-    detail: "SELECT, PRINT, combined PRINT, or RAISERROR for variable traces",
+    detail: "SELECT | PRINT | COMBINED PRINT | RAISERROR",
     kind: "enum",
     enumValues: ["select", "print", "printCombined", "raiserror"],
   },
   {
     key: "__divider_workbench__",
-    label: "— Workbench —",
+    label: "<< Workbench",
     detail: "",
     kind: "string",
     isDivider: true,
@@ -46,13 +46,13 @@ const SETTING_DEFS: SettingDef[] = [
   {
     key: "workbenchToolbarStyle",
     label: "Toolbar button style",
-    detail: "Icons + text, icons only, or text only",
+    detail: "Button Config - Icons with Text | Icons Only | Text Only",
     kind: "enum",
     enumValues: ["iconsAndText", "iconsOnly", "textOnly"],
   },
   {
     key: "__divider_logging__",
-    label: "— Logging —",
+    label: "<< Logging",
     detail: "",
     kind: "string",
     isDivider: true,
