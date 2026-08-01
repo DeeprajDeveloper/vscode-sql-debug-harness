@@ -104,10 +104,10 @@ Optional: **Analyze Procedure** shows Summary / Warnings / Identified in the Wor
 
 ---
 
-## What’s new in 0.0.4
+## What’s new in 0.0.5
 
-- Temporary-table DML (`#temp` / `##temp`) stays live in the harness, same as table-variable DML — only durable-table writes are previewed.
-- Bare `IF` / `ELSE` / `WHILE` assignments wrap in `BEGIN`…`END` with the variable trace so branches stay valid.
+- **Compare** toggle highlights additions and removals between source and debug script (banner / blank / non-`[DBG]` comments filtered).
+- Activity Log is a Level / Function / Message table with color badges and level filters (All / None).
 
 See the full [change history](docs/change-history.html).
 
@@ -132,12 +132,13 @@ The **Workbench** shows:
 
 - **Source** — selected text or full `.sql` file (**Select File…** or **Load Active**)
 - **Debug script** — generated harness (when available)
+- **Compare** — optional overlay that aligns source vs harness with add/remove highlighting
 - **Analysis** — Summary / Warnings tabs plus Identified results grouped by Kind
-- **Active log** — step-by-step engine log (collapsible)
+- **Activity log** — Level / Function / Message table with level filters (collapsible)
 
-Panes are **resizable** (drag the splitters). Click the full Analysis or Active Log header to collapse it; panel order and collapse state are preserved. Source and Debug previews use **T-SQL syntax highlighting**, theme colors, and horizontal scrolling for long lines.
+Panes are **resizable** (drag the splitters). Click the full Analysis or Activity Log header to collapse it; panel order and collapse state are preserved. Source and Debug previews use **T-SQL syntax highlighting**, theme colors, and horizontal scrolling for long lines.
 
-From the toolbar you can open **History**, **Analyze**, **Generate**, **Clear** generated output, and use **Save** for analysis `.txt`, debug `.sql`, log `.log`, or open the debug script in an editor tab.
+From the toolbar you can open **History**, **Analyze**, **Generate**, **Compare**, **Clear** generated output, and use **Save** for analysis `.txt`, debug `.sql`, log `.log`, or open the debug script in an editor tab.
 
 Available from the **SQL Debug Harness** right-click submenu on `.sql` files and from the Command Palette. Non-empty editor selections are used when present.
 
@@ -227,7 +228,11 @@ After publish, the listing is at:
 
 ## Roadmap
 
-- v2 ideas: optional connect-and-run inside `BEGIN…ROLLBACK`, richer control-flow handling, and multi-dialect support (the parser stack already spans multiple SQL dialects).
+**Shipped through 0.0.5:** Marketplace extension, in-process TypeScript engine, Workbench (Compare, leveled/filterable Activity Log, History, Save/Clear), durable-table DML previews with temp/table-var DML left live, configurable traces, optional CLI.
+
+**Near term:** stable v1.0 polish, richer cursor/`WHILE` handling, Compare refinements (whitespace / region-aware).
+
+**Later (v2+):** multi-dialect support, optional connect-and-run inside `BEGIN…ROLLBACK`, dynamic SQL assist.
 
 ## License
 

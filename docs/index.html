@@ -49,7 +49,7 @@
 					<span class="brand-name">sql-debug-harness</span>
 				</a>
 				<p class="brand-sub" id="package-version">
-					<span class="sidebar-version__value">v0.0.4</span>
+					<span class="sidebar-version__value">v0.0.5</span>
 				</p>
 
 				<nav aria-label="About">
@@ -265,24 +265,16 @@
 						and runs in-process; no Python required.
 					</p>
 
-					<h2 id="whats-new">What’s new in 0.0.4</h2>
+					<h2 id="whats-new">What’s new in 0.0.5</h2>
 					<ul>
 						<li>
-							<strong>Temp tables stay live:</strong>
-							<code class="inline">INSERT</code> /
-							<code class="inline">UPDATE</code> /
-							<code class="inline">DELETE</code> on
-							<code class="inline">#temp</code> /
-							<code class="inline">##temp</code> (and table variables) are not stubbed —
-							only durable-table DML becomes a preview.
+							<strong>Compare:</strong> toolbar toggle highlights additions and removals between
+							source and debug script (banner, blanks, and non-
+							<code class="inline">[DBG]</code> comments filtered).
 						</li>
 						<li>
-							<strong>Bare IF / ELSE wrapping:</strong> when an assignment under
-							<code class="inline">IF</code> /
-							<code class="inline">ELSE</code> /
-							<code class="inline">WHILE</code> has no
-							<code class="inline">BEGIN</code>…<code class="inline">END</code>, the harness
-							wraps the statement with its variable trace so the branch stays valid.
+							<strong>Activity Log:</strong> Level / Function / Message columns with color badges
+							and per-level filters (All / None).
 						</li>
 					</ul>
 					<p class="muted">
@@ -597,9 +589,9 @@ npx sql-debug-harness analyze -i MyProc.sql</code></pre>
 					</div>
 					<p class="muted">
 						In the Workbench: <strong>Select File…</strong> or <strong>Load Active</strong>, then
-						Analyze / Generate / Clear. Use the Save popover for analysis
+						Analyze / Generate / Compare / Clear. Use the Save popover for analysis
 						<code class="inline">.txt</code>, debug <code class="inline">.sql</code>, step log,
-						or open debug in an editor.
+						or open debug in an editor. Filter Activity Log levels from the log toolbar.
 					</p>
 
 					<h2 id="settings">VSCode Settings</h2>

@@ -2,6 +2,19 @@
 
 All notable changes to SQL Debug Harness are documented here.
 
+## 0.0.5 — 2026-08-01
+
+### Added
+
+- Workbench **Compare** toggle: side-by-side source vs debug script with additions (green) and removals (red); synced scrolling.
+- Compare noise filtering: blanks, debug banner lines, and non-`[DBG]` comment-only lines are omitted from the diff.
+- Activity Log as a three-column table: **Level**, **Function**, **Message**, with color-coded level badges (`DEBUG` / `INFO` / `WARN` / `ERROR`).
+- Activity Log level filters (toggle each level, All / None); filter state persists in the workbench.
+
+### Changed
+
+- Step log lines are serialized as `[LEVEL] [functionName] message` for Output channel and saved `.log` files.
+
 ## 0.0.4 — 2026-08-01
 
 ### Changed

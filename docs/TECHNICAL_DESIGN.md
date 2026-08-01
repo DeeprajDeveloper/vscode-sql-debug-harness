@@ -5,7 +5,7 @@
 | **Project** | vscode-sql-debug-harness |
 | **Extension ID** | `DeeprajAdhikary.sql-debug-harness` |
 | **Package / CLI** | `sql-debug-harness` |
-| **Version** | 0.0.4 |
+| **Version** | 0.0.5 |
 | **Engine** | In-process TypeScript (`src/engine/`) |
 | **License** | MIT |
 | **Last updated** | 2026-08-01 |
@@ -78,7 +78,8 @@ prepare (strip GO, deploy preamble, CREATE PROC → DECLARE)
 | `src/engine/inventory.ts` | Analyze report |
 | `src/engine/unsupported.ts` | Dynamic SQL / cursor / WHILE / MERGE / OUTPUT flags |
 | `src/engine/parser.ts` | Best-effort `node-sql-parser` TransactSQL wrapper |
-| `src/harnessWorkbench.ts` | Workbench webview: source + debug + grouped analysis + active log + history + per-artifact save |
+| `src/harnessWorkbench.ts` | Workbench webview: source + debug + Compare diff + grouped analysis + leveled activity log + history + save |
+| `src/sqlDiff.ts` | Line diff for Compare (noise-filtered source ↔ harness) |
 | `src/harnessSidebar.ts` | Activity-bar actions and grouped analyzed/debugged procedure history |
 | `src/history.ts` | Workspace-scoped recent procedure persistence |
 | `src/configureSettings.ts` | Interactive settings QuickPick |
@@ -114,7 +115,7 @@ analyze(sql, { onLog? })
 | `spDebug.openInWorkbench` | Load a chosen `.sql` file into the workbench |
 | `spDebug.configure` / `openSettings` | Settings UI |
 
-The workbench **Save** popover covers analysis report, debug `.sql`, step log, and open-debug; **Clear** resets generated panes.
+The workbench **Save** popover covers analysis report, debug `.sql`, step log, and open-debug; **Clear** resets generated panes; **Compare** toggles a noise-filtered add/remove diff between source and harness. The Activity Log is a Level / Function / Message table with per-level filters.
 
 **Settings retained:** `spDebug.traceStyle` (`select` | `print` | `printCombined` | `raiserror`), `spDebug.logToOutput`, `spDebug.saveLogFile`, `spDebug.quietWhenLogging`, `spDebug.workbenchToolbarStyle`.
 
@@ -158,3 +159,29 @@ Regression fixtures under `samples/fixtures/` cover MVP1 cases: simple DML, `UPD
 - No telemetry.
 - No network calls at runtime for generate/analyze.
 - MIT license.
+
+---
+
+## 8. Roadmap
+
+Current package version is **0.0.5**.
+
+### Shipped (through 0.0.5)
+
+- Marketplace listing + VSIX packaging (`DeeprajAdhikary.sql-debug-harness`)
+- In-process TypeScript engine (no Python backend)
+- Workbench: Analyze / Generate, History, Save popover, Clear, Compare (noise-filtered add/remove), leveled Activity Log with filters
+- Engine: durable-table DML previews; temp / table-var DML left live; TCL neutralization; EXEC stubs; configurable traces (`select` default); procedure-header → `DECLARE`; bare `IF`/`ELSE` wrap for traces
+- Optional CLI (`npx sql-debug-harness`) sharing the same engine
+
+### Near term
+
+- **Stable v1.0** — polish docs/demos, broaden fixture coverage, harden edge cases before calling the release “1.0”
+- **Richer control-flow handling** inside cursors / `WHILE` (still detect + warn today)
+- **Compare refinements** — optional ignore-whitespace / word-level highlight; region-aware maps from the transform (quieter diffs)
+
+### Later (v2+)
+
+- **Multi-dialect support** — Postgres / Oracle / MySQL (`node-sql-parser` spans dialects; rewrites are T-SQL-specific today)
+- **Optional live transaction-wrapper mode** — connect and run inside `BEGIN…ROLLBACK` (credentials + rollback edge cases)
+- **Dynamic SQL assist** — safer handling or guided stubs for `EXEC(@sql)` / `sp_executesql` (currently flagged only)

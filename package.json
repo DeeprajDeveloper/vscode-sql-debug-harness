@@ -7,7 +7,7 @@
     "url": "https://github.com/DeeprajDeveloper/vscode-sql-debug-harness"
   },
   "license": "MIT",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "DeeprajAdhikary",
   "engines": {
     "vscode": "^1.85.0",

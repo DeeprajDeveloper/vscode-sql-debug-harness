@@ -49,7 +49,7 @@
 					<span class="brand-name">sql-debug-harness</span>
 				</a>
 				<p class="brand-sub" id="package-version">
-					<span class="sidebar-version__value">v0.0.4</span>
+					<span class="sidebar-version__value">v0.0.5</span>
 				</p>
 
 				<div class="sidebar-page-links">
@@ -230,7 +230,7 @@
 							</tr>
 							<tr>
 								<td>Version</td>
-								<td><code class="inline">0.0.4</code></td>
+								<td><code class="inline">0.0.5</code></td>
 							</tr>
 							<tr>
 								<td>Engine</td>
@@ -479,28 +479,65 @@ sql-debug-harness version</code></pre>
 						</li>
 					</ul>
 					<p class="muted">
-						Temp tables are previewed; table-variable DML is left alone. Fixture coverage lives
-						under <code class="inline">samples/fixtures/</code> with Jest in
+						Temp-table and table-variable DML are left live; only durable-table DML is previewed.
+						Fixture coverage lives under <code class="inline">samples/fixtures/</code> with Jest in
 						<code class="inline">src/engine/__tests__/</code>.
 					</p>
 
 					<h2 id="roadmap">Roadmap</h2>
+					<p class="muted">
+						Current package version is <code class="inline">0.0.5</code>. Items below separate what
+						already shipped from near-term and later work.
+					</p>
+
+					<h3>Shipped (through 0.0.5)</h3>
+					<ul>
+						<li>Marketplace listing + VSIX packaging (<code class="inline">DeeprajAdhikary.sql-debug-harness</code>).</li>
+						<li>In-process TypeScript engine (no Python backend).</li>
+						<li>
+							Workbench: Analyze / Generate, History, Save popover, Clear, Compare (noise-filtered
+							add/remove), leveled Activity Log with filters.
+						</li>
+						<li>
+							Engine: durable-table DML previews; temp / table-var DML left live; TCL neutralization;
+							EXEC stubs; configurable traces (<code class="inline">select</code> default);
+							procedure-header → <code class="inline">DECLARE</code>; bare
+							<code class="inline">IF</code>/<code class="inline">ELSE</code> wrap for traces.
+						</li>
+						<li>Optional CLI (<code class="inline">npx sql-debug-harness</code>) sharing the same engine.</li>
+					</ul>
+
+					<h3>Near term</h3>
 					<ul>
 						<li>
-							<strong>Marketplace publish</strong> — VSIX packaging works today; listing still
-							pending for a stable v1.0.
-						</li>
-						<li>
-							<strong>Multi-dialect support</strong> —
-							<code class="inline">node-sql-parser</code> already spans other dialects.
-						</li>
-						<li>
-							<strong>Optional live transaction-wrapper mode</strong> — connect and run inside
-							<code class="inline">BEGIN…ROLLBACK</code>.
+							<strong>Stable v1.0</strong> — polish docs/demos, broaden fixture coverage, harden edge
+							cases before calling the release “1.0”.
 						</li>
 						<li>
 							<strong>Richer control-flow handling</strong> inside cursors /
-							<code class="inline">WHILE</code> (still detect + warn for v1).
+							<code class="inline">WHILE</code> (still detect + warn today).
+						</li>
+						<li>
+							<strong>Compare refinements</strong> — optional ignore-whitespace / word-level highlight;
+							region-aware maps from the transform (quieter diffs).
+						</li>
+					</ul>
+
+					<h3>Later (v2+)</h3>
+					<ul>
+						<li>
+							<strong>Multi-dialect support</strong> — Postgres / Oracle / MySQL;
+							<code class="inline">node-sql-parser</code> already spans other dialects, but rewrites
+							are T-SQL-specific today.
+						</li>
+						<li>
+							<strong>Optional live transaction-wrapper mode</strong> — connect and run inside
+							<code class="inline">BEGIN…ROLLBACK</code> (credentials + rollback edge cases).
+						</li>
+						<li>
+							<strong>Dynamic SQL assist</strong> — safer handling or guided stubs for
+							<code class="inline">EXEC(@sql)</code> / <code class="inline">sp_executesql</code>
+							(currently flagged only).
 						</li>
 					</ul>
 
