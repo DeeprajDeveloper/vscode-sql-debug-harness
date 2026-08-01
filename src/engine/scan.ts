@@ -1,7 +1,6 @@
 import {
   BEGIN_CATCH,
   BEGIN_TRY,
-  DELETE_TABLE_VAR,
   DML_DELETE_CLAUSE,
   DML_INSERT_CONTINUATION,
   DML_INSERT_PAREN,
@@ -10,21 +9,12 @@ import {
   DML_UPDATE_COLUMN_SET,
   END_CATCH,
   END_TRY,
-  INSERT_TABLE_VAR,
+  isLocalObjectDml,
   NEW_STMT_AFTER_DML,
   SUMMARY_MAX_LEN,
-  UPDATE_TABLE_VAR,
 } from "./constants";
 import { stripBlockCommentsOnLine } from "./comments";
 import type { DmlFinding, TryCatchFinding, TsqlScanResult } from "./types";
-
-function isTableVariableDml(firstLine: string): boolean {
-  return (
-    INSERT_TABLE_VAR.test(firstLine) ||
-    UPDATE_TABLE_VAR.test(firstLine) ||
-    DELETE_TABLE_VAR.test(firstLine)
-  );
-}
 
 function lineStartsNewStatement(line: string, dmlKind: string): boolean {
   if (!line.trim()) {
@@ -99,7 +89,7 @@ function findDmlStatements(lines: string[]): DmlFinding[] {
       i += 1;
       continue;
     }
-    if (isTableVariableDml(effective)) {
+    if (isLocalObjectDml(effective)) {
       i += 1;
       continue;
     }

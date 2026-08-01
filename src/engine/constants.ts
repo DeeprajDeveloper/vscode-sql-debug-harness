@@ -8,6 +8,22 @@ export const DML_START = /^\s*(INSERT|UPDATE|DELETE|MERGE)\b/i;
 export const INSERT_TABLE_VAR = /^\s*INSERT\s+INTO\s+@/i;
 export const UPDATE_TABLE_VAR = /^\s*UPDATE\s+@/i;
 export const DELETE_TABLE_VAR = /^\s*DELETE\s+FROM\s+@/i;
+/** Local/global temp tables (#t / ##t) — session-scoped, safe to keep live in harness. */
+export const INSERT_TEMP_TABLE = /^\s*INSERT\s+(?:INTO\s+)?\[?#/i;
+export const UPDATE_TEMP_TABLE = /^\s*UPDATE\s+\[?#/i;
+export const DELETE_TEMP_TABLE = /^\s*DELETE\s+(?:FROM\s+)?\[?#/i;
+
+/** Table-variable or temp-table DML — leave intact (no real table side effects). */
+export function isLocalObjectDml(firstLine: string): boolean {
+  return (
+    INSERT_TABLE_VAR.test(firstLine) ||
+    UPDATE_TABLE_VAR.test(firstLine) ||
+    DELETE_TABLE_VAR.test(firstLine) ||
+    INSERT_TEMP_TABLE.test(firstLine) ||
+    UPDATE_TEMP_TABLE.test(firstLine) ||
+    DELETE_TEMP_TABLE.test(firstLine)
+  );
+}
 
 export const NEW_STMT_AFTER_DML =
   /^\s*(INSERT|UPDATE|DELETE|MERGE|SET\s+@|BEGIN|END\b|DECLARE|SELECT\b|IF\b|WHILE\b|PRINT\b|RETURN\b|THROW\b|RAISERROR\b|COMMIT\b|ROLLBACK\b|GOTO\b|EXEC\b|EXECUTE\b|SAVE\s+TRAN)/i;

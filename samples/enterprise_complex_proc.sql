@@ -130,6 +130,9 @@ BEGIN
         INSERT INTO dbo.ErrorLog (BatchID, ErrorMessage, CreatedDate)
         VALUES (@BatchID, ERROR_MESSAGE(), GETDATE())
 
+        INSERT INTO #TempTable (OrderID, ErrorMessage, CreatedDate)
+        SELECT * FROM ErrorLog
+
         SET @Status = N'Failed'
         THROW
     END CATCH

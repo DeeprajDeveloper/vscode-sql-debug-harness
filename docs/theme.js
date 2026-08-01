@@ -229,58 +229,160 @@
     var demoCodeEl = document.getElementById("demoCode");
     var demoFootnote = document.getElementById("demoFootnote");
     var tabs = document.querySelectorAll(".demo-tab");
+    var scenarioBtns = document.querySelectorAll(".demo-scenario");
     if (!demoCodeEl || !tabs.length) {
       return;
     }
 
-    var originalCode =
-      '<span class="kw">CREATE PROCEDURE</span> dbo.usp_SimpleDml\n' +
-      '    <span class="com">@Id INT,</span>\n' +
-      '    <span class="com">@Name NVARCHAR(100)</span>\n' +
-      '<span class="kw">AS</span>\n' +
-      '<span class="kw">BEGIN</span>\n' +
-      '    <span class="risk-tok">INSERT INTO</span> dbo.Items (Id, Name)\n' +
-      "    <span class=\"kw\">VALUES</span> (@Id, @Name);\n" +
-      '    <span class="risk-tok">UPDATE</span> dbo.Items\n' +
-      '    <span class="kw">SET</span> Name = @Name <span class="kw">WHERE</span> Id = @Id;\n' +
-      '<span class="kw">END</span>';
+    var scenarios = {
+      dml: {
+        original:
+          '<span class="kw">CREATE PROCEDURE</span> dbo.usp_SimpleDml\n' +
+          "    @Id INT,\n" +
+          "    @Name NVARCHAR(100)\n" +
+          "<span class=\"kw\">AS</span>\n" +
+          "<span class=\"kw\">BEGIN</span>\n" +
+          '    <span class="risk-tok">INSERT INTO</span> dbo.Items (Id, Name)\n' +
+          "    <span class=\"kw\">VALUES</span> (@Id, @Name);\n" +
+          '    <span class="risk-tok">UPDATE</span> dbo.Items\n' +
+          "    <span class=\"kw\">SET</span> Name = @Name <span class=\"kw\">WHERE</span> Id = @Id;\n" +
+          "<span class=\"kw\">END</span>",
+        debug:
+          '<span class="com">-- [DBG] Harness: was CREATE PROCEDURE dbo.usp_SimpleDml</span>\n' +
+          '<span class="kw">DECLARE</span> @Id INT = <span class="kw">NULL</span>,  <span class="com">-- TODO: set test value</span>\n' +
+          "        @Name NVARCHAR(100) = <span class=\"kw\">NULL</span>;  <span class=\"com\">-- TODO: set test value</span>\n" +
+          '    <span class="com">-- [DBG-PREVIEW] Would have executed:</span>\n' +
+          '    <span class="safe-tok">SELECT</span> <span class="str">N\'INSERT to table dbo.Items\'</span> <span class="kw">AS</span> [DBG_Action],\n' +
+          "           @Id <span class=\"kw\">AS</span> [@Id], @Name <span class=\"kw\">AS</span> [@Name];\n" +
+          '    <span class="com">-- [DBG-PREVIEW] Would have executed:</span>\n' +
+          '    <span class="safe-tok">SELECT</span> <span class="str">N\'UPDATE to table dbo.Items\'</span> <span class="kw">AS</span> [DBG_Action],\n' +
+          "           @Name <span class=\"kw\">AS</span> [@Name]\n" +
+          "    <span class=\"kw\">FROM</span> dbo.Items <span class=\"kw\">WHERE</span> Id = @Id;",
+        originalNote:
+          '<span class="risk-tag">● live write</span> — running this mutates real rows in <code class="inline">dbo.Items</code>.',
+        debugNote:
+          '<span class="safe-tag">● read-only</span> — durable-table DML becomes SELECT previews; procedure AS BEGIN/END is stripped.',
+      },
+      temp: {
+        original:
+          '<span class="kw">CREATE PROCEDURE</span> dbo.usp_Temp\n' +
+          "    @Id INT\n" +
+          "<span class=\"kw\">AS</span>\n" +
+          "<span class=\"kw\">BEGIN</span>\n" +
+          "    <span class=\"kw\">CREATE TABLE</span> #Temp (Id INT);\n" +
+          '    <span class="risk-tok">INSERT INTO</span> #Temp (Id) <span class="kw">VALUES</span> (@Id);\n' +
+          '    <span class="risk-tok">INSERT INTO</span> dbo.Items (Id) <span class="kw">VALUES</span> (@Id);\n' +
+          "<span class=\"kw\">END</span>",
+        debug:
+          '<span class="com">-- [DBG] Harness: was CREATE PROCEDURE dbo.usp_Temp</span>\n' +
+          '<span class="kw">DECLARE</span> @Id INT = <span class="kw">NULL</span>;  <span class="com">-- TODO: set test value</span>\n' +
+          "    <span class=\"kw\">CREATE TABLE</span> #Temp (Id INT);\n" +
+          '    <span class="safe-tok">INSERT INTO</span> #Temp (Id) <span class="kw">VALUES</span> (@Id);\n' +
+          '    <span class="com">-- [DBG-PREVIEW] Would have executed:</span>\n' +
+          '    <span class="safe-tok">SELECT</span> <span class="str">N\'INSERT to table dbo.Items\'</span> <span class="kw">AS</span> [DBG_Action],\n' +
+          "           @Id <span class=\"kw\">AS</span> [@Id];",
+        originalNote:
+          '<span class="risk-tag">● mixed</span> — #Temp is session-scoped; dbo.Items is a durable write.',
+        debugNote:
+          '<span class="safe-tag">● selective</span> — #Temp INSERT stays live; only dbo.Items is previewed.',
+      },
+      ifelse: {
+        original:
+          '<span class="kw">CREATE PROCEDURE</span> dbo.usp_IfElse\n' +
+          "    @Var1 INT\n" +
+          "<span class=\"kw\">AS</span>\n" +
+          "<span class=\"kw\">BEGIN</span>\n" +
+          "    <span class=\"kw\">DECLARE</span> @Var2 INT;\n" +
+          "    <span class=\"kw\">IF</span> @Var1 &gt;= 0\n" +
+          "      <span class=\"kw\">SET</span> @Var2 = 1\n" +
+          "    <span class=\"kw\">ELSE</span>\n" +
+          "      <span class=\"kw\">SET</span> @Var2 = 0\n" +
+          "<span class=\"kw\">END</span>",
+        debug:
+          '<span class="com">-- [DBG] Harness: was CREATE PROCEDURE dbo.usp_IfElse</span>\n' +
+          '<span class="kw">DECLARE</span> @Var1 INT = <span class="kw">NULL</span>;  <span class="com">-- TODO: set test value</span>\n' +
+          "    <span class=\"kw\">DECLARE</span> @Var2 INT;\n" +
+          "    <span class=\"kw\">IF</span> @Var1 &gt;= 0\n" +
+          "      <span class=\"kw\">BEGIN</span>\n" +
+          "          <span class=\"kw\">SET</span> @Var2 = 1\n" +
+          "          <span class=\"safe-tok\">SELECT</span> <span class=\"str\">'DBG'</span> [NOTES], @Var2 [Var2];\n" +
+          "      <span class=\"kw\">END</span>\n" +
+          "    <span class=\"kw\">ELSE</span>\n" +
+          "      <span class=\"kw\">BEGIN</span>\n" +
+          "          <span class=\"kw\">SET</span> @Var2 = 0\n" +
+          "          <span class=\"safe-tok\">SELECT</span> <span class=\"str\">'DBG'</span> [NOTES], @Var2 [Var2];\n" +
+          "      <span class=\"kw\">END</span>",
+        originalNote:
+          '<span class="risk-tag">● bare IF/ELSE</span> — each branch is a single SET with no BEGIN/END.',
+        debugNote:
+          '<span class="safe-tag">● wrapped</span> — harness adds BEGIN/END so the SELECT trace stays inside each branch.',
+      },
+      traces: {
+        original:
+          '<span class="kw">CREATE PROCEDURE</span> dbo.usp_Trace\n' +
+          "<span class=\"kw\">AS</span>\n" +
+          "<span class=\"kw\">BEGIN</span>\n" +
+          "    <span class=\"kw\">SET</span> @A = 1;\n" +
+          "    <span class=\"kw\">SELECT</span> @B = 2, @C = 3;\n" +
+          "<span class=\"kw\">END</span>",
+        debug:
+          '<span class="com">-- Default spDebug.traceStyle = select</span>\n' +
+          "    <span class=\"kw\">SET</span> @A = 1;\n" +
+          "    <span class=\"safe-tok\">SELECT</span> <span class=\"str\">'DBG'</span> [NOTES], @A [A];\n" +
+          "    <span class=\"kw\">SELECT</span> @B = 2, @C = 3;\n" +
+          "    <span class=\"safe-tok\">SELECT</span> <span class=\"str\">'DBG'</span> [NOTES], @B [B], @C [C];\n\n" +
+          '<span class="com">-- With printCombined:</span>\n' +
+          "    <span class=\"safe-tok\">PRINT CONCAT</span>(<span class=\"str\">N'[DBG] @B = '</span>, <span class=\"kw\">CAST</span>(@B <span class=\"kw\">AS</span> NVARCHAR(4000)),\n" +
+          "                   <span class=\"str\">N'; @C = '</span>, <span class=\"kw\">CAST</span>(@C <span class=\"kw\">AS</span> NVARCHAR(4000)));",
+        originalNote:
+          '<span class="risk-tag">● assignments</span> — SET and multi-variable SELECT @assign with no traces yet.',
+        debugNote:
+          '<span class="safe-tag">● traced</span> — default SELECT traces; printCombined folds @B/@C into one PRINT.',
+      },
+    };
 
-    var debugCode =
-      '<span class="com">-- [DBG] Harness: was CREATE PROCEDURE dbo.usp_SimpleDml</span>\n' +
-      '<span class="kw">DECLARE</span> @Id INT = <span class="kw">NULL</span>,  <span class="com">-- TODO: set test value</span>\n' +
-      '        @Name NVARCHAR(100) = <span class="kw">NULL</span>;  <span class="com">-- TODO: set test value</span>\n' +
-      '<span class="kw">BEGIN</span>\n' +
-      '    <span class="com">-- [DBG-PREVIEW] Would have executed:</span>\n' +
-      '    <span class="safe-tok">SELECT</span> <span class="str">N\'INSERT to table dbo.Items\'</span> <span class="kw">AS</span> [DBG_Action],\n' +
-      "           @Id <span class=\"kw\">AS</span> [@Id], @Name <span class=\"kw\">AS</span> [@Name];\n" +
-      '    <span class="com">-- [DBG-PREVIEW] Would have executed:</span>\n' +
-      '    <span class="safe-tok">SELECT</span> <span class="str">N\'UPDATE to table dbo.Items\'</span> <span class="kw">AS</span> [DBG_Action],\n' +
-      "           @Name <span class=\"kw\">AS</span> [@Name]\n" +
-      '    <span class="kw">FROM</span> dbo.Items <span class="kw">WHERE</span> Id = @Id;\n' +
-      '<span class="kw">END</span>';
+    var currentScenario = "dml";
+    var currentState = "original";
 
-    function setDemoState(state) {
-      demoCodeEl.innerHTML = state === "original" ? originalCode : debugCode;
+    function render() {
+      var scenario = scenarios[currentScenario] || scenarios.dml;
+      demoCodeEl.innerHTML =
+        currentState === "original" ? scenario.original : scenario.debug;
       if (demoFootnote) {
         demoFootnote.innerHTML =
-          state === "original"
-            ? '<span class="risk-tag">● live write</span> — running this mutates real rows in <code class="inline">dbo.Items</code>.'
-            : '<span class="safe-tag">● read-only</span> — running this changes nothing; it only shows what would happen.';
+          currentState === "original"
+            ? scenario.originalNote
+            : scenario.debugNote;
       }
       tabs.forEach(function (tab) {
         tab.classList.toggle(
           "is-active",
-          tab.getAttribute("data-state") === state
+          tab.getAttribute("data-state") === currentState
+        );
+      });
+      scenarioBtns.forEach(function (btn) {
+        btn.classList.toggle(
+          "is-active",
+          btn.getAttribute("data-scenario") === currentScenario
         );
       });
     }
 
     tabs.forEach(function (tab) {
       tab.addEventListener("click", function () {
-        setDemoState(tab.getAttribute("data-state"));
+        currentState = tab.getAttribute("data-state") || "original";
+        render();
       });
     });
-    setDemoState("original");
+
+    scenarioBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        currentScenario = btn.getAttribute("data-scenario") || "dml";
+        render();
+      });
+    });
+
+    render();
   }
 
   function boot() {

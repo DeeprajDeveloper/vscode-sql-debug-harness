@@ -1,18 +1,15 @@
 import {
   ALREADY_STUBBED,
   DELETE_FROM_CLAUSE,
-  DELETE_TABLE_VAR,
   DML_START,
   EXEC_DYNAMIC,
   EXEC_START,
-  INSERT_TABLE_VAR,
   INSERT_TARGET,
+  isLocalObjectDml,
   LINE_INDENT,
-  SELECT_ASSIGN,
   SET_NOCOUNT,
   SET_VAR_LINE,
   TCL_START,
-  UPDATE_TABLE_VAR,
   UPDATE_TARGET,
 } from "./constants";
 import { stripSqlComments } from "./comments";
@@ -51,14 +48,6 @@ function emitProgress(
   emitLog(onLog, fn, message);
 }
 
-function isTableVariableDml(firstLine: string): boolean {
-  return (
-    INSERT_TABLE_VAR.test(firstLine) ||
-    UPDATE_TABLE_VAR.test(firstLine) ||
-    DELETE_TABLE_VAR.test(firstLine)
-  );
-}
-
 function findDmlLineBlocks(lines: string[]): Array<[number, number]> {
   const blocks: Array<[number, number]> = [];
   let i = 0;
@@ -72,7 +61,7 @@ function findDmlLineBlocks(lines: string[]): Array<[number, number]> {
       i += 1;
       continue;
     }
-    if (isTableVariableDml(line)) {
+    if (isLocalObjectDml(line)) {
       i += 1;
       continue;
     }
@@ -226,31 +215,77 @@ function traceLinesForVars(
   return varNames.map((v) => traceLineForVar(v, indent, "raiserror"));
 }
 
+/** Previous non-blank line is a bare IF / ELSE / WHILE without BEGIN — one-statement body. */
+function isBareControlBranchHeader(line: string): boolean {
+  const t = line.trim();
+  if (!t || /^BEGIN\b/i.test(t)) {
+    return false;
+  }
+  if (/^ELSE\s+IF\b/i.test(t)) {
+    return !/\bBEGIN\b/i.test(t);
+  }
+  if (/^ELSE\b/i.test(t)) {
+    return !/\bBEGIN\b/i.test(t);
+  }
+  if (/^IF\b/i.test(t) || /^WHILE\b/i.test(t)) {
+    return !/\bBEGIN\b/i.test(t);
+  }
+  return false;
+}
+
+function previousNonBlankLine(lines: string[], index: number): string | null {
+  for (let i = index - 1; i >= 0; i--) {
+    if (lines[i].trim()) {
+      return lines[i];
+    }
+  }
+  return null;
+}
+
 function injectSetTraces(
   text: string,
   traceStyle: TraceStyle,
   onDetail?: LogCallback
 ): [string, number] {
   let count = 0;
-  // Match SET @var = ... line by line for reliable indent
   const lines = text.split(/\r?\n/);
   const out: string[] = [];
-  for (const line of lines) {
-    out.push(line);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const m = SET_VAR_LINE.exec(line);
     if (!m || SET_NOCOUNT.test(line)) {
+      out.push(line);
       continue;
     }
     const indent = m[1] || "    ";
     const varName = m[2];
     const traces = traceLinesForVars([varName], indent, traceStyle);
-    out.push(...traces);
+    const prev = previousNonBlankLine(lines, i);
+    const wrap = prev !== null && isBareControlBranchHeader(prev);
+
+    if (wrap) {
+      const inner = `${indent}    `;
+      const setLine = line.replace(/^\s*/, inner);
+      const innerTraces = traceLinesForVars([varName], inner, traceStyle);
+      out.push(`${indent}BEGIN`);
+      out.push(setLine);
+      out.push(...innerTraces);
+      out.push(`${indent}END`);
+      emitLog(
+        onDetail,
+        "injectSetTraces",
+        `  SET trace wrapped in BEGIN/END: ${varName} (${traceStyle}) after bare IF/ELSE/WHILE`
+      );
+    } else {
+      out.push(line);
+      out.push(...traces);
+      emitLog(
+        onDetail,
+        "injectSetTraces",
+        `  SET trace added: ${varName} (${traceStyle}) after ${truncateForLog(line)}`
+      );
+    }
     count += 1;
-    emitLog(
-      onDetail,
-      "injectSetTraces",
-      `  SET trace added: ${varName} (${traceStyle}) after ${truncateForLog(line)}`
-    );
   }
   return [out.join("\n"), count];
 }
@@ -267,28 +302,94 @@ function varsFromSelectAssignments(selectSql: string): string[] {
   return names;
 }
 
+const SELECT_ASSIGN_LINE = /^(\s*)SELECT\b/i;
+
 function injectSelectTraces(
   text: string,
   traceStyle: TraceStyle,
   onDetail?: LogCallback
 ): [string, number] {
   let count = 0;
-  const result = text.replace(SELECT_ASSIGN, (full, stmt: string) => {
-    const vars = varsFromSelectAssignments(stmt);
-    if (!vars.length) {
-      return full;
+  // Prefer line-oriented injection so bare IF/ELSE bodies can be wrapped.
+  // Fall back to the multi-line SELECT_ASSIGN regex only for leftover spans.
+  const lines = text.split(/\r?\n/);
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const head = SELECT_ASSIGN_LINE.exec(line);
+    const varsOnLine = varsFromSelectAssignments(line);
+    const looksLikeAssign =
+      head &&
+      varsOnLine.length > 0 &&
+      !/^\s*SELECT\b[^;]*\bFROM\b/i.test(line);
+
+    if (!looksLikeAssign) {
+      out.push(line);
+      i += 1;
+      continue;
     }
-    const indent = "    ";
-    const traces = traceLinesForVars(vars, indent, traceStyle);
+
+    // Collect continuation lines until statement ends (semicolon) or a new stmt.
+    let end = i;
+    let block = line;
+    while (end < lines.length && !lines[end].includes(";")) {
+      const next = end + 1;
+      if (next >= lines.length) {
+        break;
+      }
+      if (!lines[next].trim()) {
+        end = next;
+        block += "\n" + lines[next];
+        continue;
+      }
+      // Stop if next line starts a new statement (unlikely mid SELECT @assign)
+      if (/^\s*(IF|ELSE|WHILE|BEGIN|END|SET\s+@|INSERT|UPDATE|DELETE|DECLARE|RETURN|PRINT)\b/i.test(lines[next])) {
+        break;
+      }
+      end = next;
+      block += "\n" + lines[next];
+    }
+
+    const vars = varsFromSelectAssignments(block);
+    if (!vars.length) {
+      out.push(line);
+      i += 1;
+      continue;
+    }
+
+    const indent = head![1] || "    ";
+    const prev = previousNonBlankLine(lines, i);
+    const wrap = prev !== null && isBareControlBranchHeader(prev);
+    const blockLines = lines.slice(i, end + 1);
+
+    if (wrap) {
+      const inner = `${indent}    `;
+      out.push(`${indent}BEGIN`);
+      for (const bl of blockLines) {
+        out.push(bl.replace(/^\s*/, inner));
+      }
+      out.push(...traceLinesForVars(vars, inner, traceStyle));
+      out.push(`${indent}END`);
+      emitLog(
+        onDetail,
+        "injectSelectTraces",
+        `  SELECT @assign wrapped in BEGIN/END: ${vars.join(", ")} (${traceStyle})`
+      );
+    } else {
+      out.push(...blockLines);
+      out.push(...traceLinesForVars(vars, indent, traceStyle));
+      emitLog(
+        onDetail,
+        "injectSelectTraces",
+        `  SELECT @assign trace(s) added: ${vars.join(", ")} (${traceStyle})`
+      );
+    }
     count += vars.length;
-    emitLog(
-      onDetail,
-      "injectSelectTraces",
-      `  SELECT @assign trace(s) added: ${vars.join(", ")} (${traceStyle})`
-    );
-    return full + "\n" + traces.join("\n");
-  });
-  return [result, count];
+    i = end + 1;
+  }
+
+  return [out.join("\n"), count];
 }
 
 function debugBanner(parseErrors: string[], stats: TransformStats): string {

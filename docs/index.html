@@ -49,7 +49,7 @@
 					<span class="brand-name">sql-debug-harness</span>
 				</a>
 				<p class="brand-sub" id="package-version">
-					<span class="sidebar-version__value">v0.0.3</span>
+					<span class="sidebar-version__value">v0.0.4</span>
 				</p>
 
 				<nav aria-label="About">
@@ -62,6 +62,10 @@
 						<a class="navlink" href="#whats-new" data-target="whats-new">
 							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.64 5.64l2.12 2.12M16.24 16.24l2.12 2.12M18.36 5.64l-2.12 2.12M7.76 16.24l-2.12 2.12"/><circle cx="12" cy="12" r="3"/></svg>
 							What's new
+						</a>
+						<a class="navlink" href="#examples" data-target="examples">
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h8M8 17h5"/></svg>
+							Examples
 						</a>
 						<a class="navlink" href="#the-problem" data-target="the-problem">
 							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
@@ -218,6 +222,12 @@
 					</div> -->
 
 					<div class="demo">
+						<div class="demo-scenarios" role="tablist" aria-label="Example scenarios">
+							<button type="button" class="demo-scenario is-active" data-scenario="dml">Durable DML</button>
+							<button type="button" class="demo-scenario" data-scenario="temp">Temp tables</button>
+							<button type="button" class="demo-scenario" data-scenario="ifelse">Bare IF / ELSE</button>
+							<button type="button" class="demo-scenario" data-scenario="traces">Variable traces</button>
+						</div>
 						<div class="demo-tabs">
 							<button type="button" class="demo-tab is-active" data-state="original">
 								<svg class="demo-tab__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -255,29 +265,29 @@
 						and runs in-process; no Python required.
 					</p>
 
-					<h2 id="whats-new">What’s new in 0.0.3</h2>
+					<h2 id="whats-new">What’s new in 0.0.4</h2>
 					<ul>
 						<li>
-							<strong>SELECT traces by default:</strong>
-							<code class="inline">spDebug.traceStyle</code> supports
-							<code class="inline">select</code> (default),
-							<code class="inline">print</code>,
-							<code class="inline">printCombined</code>, and
-							<code class="inline">raiserror</code>.
+							<strong>Temp tables stay live:</strong>
+							<code class="inline">INSERT</code> /
+							<code class="inline">UPDATE</code> /
+							<code class="inline">DELETE</code> on
+							<code class="inline">#temp</code> /
+							<code class="inline">##temp</code> (and table variables) are not stubbed —
+							only durable-table DML becomes a preview.
 						</li>
 						<li>
-							<strong>Procedure headers:</strong> inline first-line parameters stay continuous in
-							one <code class="inline">DECLARE</code>;
-							<code class="inline">AS BEGIN</code> and the outer procedure
-							<code class="inline">END</code> are stripped from the harness.
-						</li>
-						<li>
-							<strong>Workbench Save / Clear:</strong> Save is a single popover for analysis, debug
-							script, log, and open-debug; Clear wipes generated output without regenerating.
+							<strong>Bare IF / ELSE wrapping:</strong> when an assignment under
+							<code class="inline">IF</code> /
+							<code class="inline">ELSE</code> /
+							<code class="inline">WHILE</code> has no
+							<code class="inline">BEGIN</code>…<code class="inline">END</code>, the harness
+							wraps the statement with its variable trace so the branch stays valid.
 						</li>
 					</ul>
 					<p class="muted">
 						See the complete <a href="change-history.html">change history</a> for release details.
+						Try the interactive scenarios above, or jump to <a href="#examples">written examples</a>.
 					</p>
 					<figure class="doc-preview">
 						<video
@@ -295,6 +305,158 @@
 							Workbench preview — analyze a procedure and generate a debug harness in VS&nbsp;Code.
 						</figcaption>
 					</figure>
+
+					<h2 id="examples">Examples</h2>
+					<p>
+						These are representative excerpts of what Generate Debug Script produces. Banner comments
+						and step-log lines are omitted for clarity.
+					</p>
+
+					<div class="example-list">
+						<article class="example-card" id="example-dml">
+							<div class="example-card__head">
+								<h3 class="example-card__title">Durable-table DML → SELECT preview</h3>
+								<p class="example-card__desc">
+									Real-table <code class="inline">INSERT</code> /
+									<code class="inline">UPDATE</code> /
+									<code class="inline">DELETE</code> become read-only previews.
+									Procedure parameters become one continuous
+									<code class="inline">DECLARE</code>;
+									<code class="inline">AS BEGIN</code> / outer
+									<code class="inline">END</code> are stripped.
+								</p>
+							</div>
+							<div class="example-pair">
+								<div class="example-pane example-pane--input">
+									<p class="example-pane__label">Input</p>
+									<pre>CREATE PROCEDURE dbo.usp_SimpleDml
+    @Id INT,
+    @Name NVARCHAR(100)
+AS
+BEGIN
+    INSERT INTO dbo.Items (Id, Name)
+    VALUES (@Id, @Name);
+    UPDATE dbo.Items
+    SET Name = @Name WHERE Id = @Id;
+END</pre>
+								</div>
+								<div class="example-pane example-pane--output">
+									<p class="example-pane__label">Harness</p>
+									<pre>-- [DBG] Harness: was CREATE PROCEDURE dbo.usp_SimpleDml
+DECLARE @Id INT = NULL,  -- TODO: set test value
+        @Name NVARCHAR(100) = NULL;  -- TODO: set test value
+    -- [DBG-PREVIEW] Would have executed:
+    SELECT N'INSERT to table dbo.Items' AS [DBG_Action],
+           @Id AS [@Id], @Name AS [@Name];
+    -- [DBG-PREVIEW] Would have executed:
+    SELECT N'UPDATE to table dbo.Items' AS [DBG_Action],
+           @Name AS [@Name]
+    FROM dbo.Items WHERE Id = @Id;</pre>
+								</div>
+							</div>
+						</article>
+
+						<article class="example-card" id="example-temp">
+							<div class="example-card__head">
+								<h3 class="example-card__title">Temp tables stay live</h3>
+								<p class="example-card__desc">
+									<code class="inline">#temp</code> /
+									<code class="inline">##temp</code> (and table-variable) DML is left intact
+									because it does not write durable user tables. Only
+									<code class="inline">dbo.Items</code> is previewed.
+								</p>
+							</div>
+							<div class="example-pair">
+								<div class="example-pane example-pane--input">
+									<p class="example-pane__label">Input</p>
+									<pre>CREATE PROCEDURE dbo.usp_Temp
+    @Id INT
+AS
+BEGIN
+    CREATE TABLE #Temp (Id INT);
+    INSERT INTO #Temp (Id) VALUES (@Id);
+    INSERT INTO dbo.Items (Id) VALUES (@Id);
+END</pre>
+								</div>
+								<div class="example-pane example-pane--output">
+									<p class="example-pane__label">Harness</p>
+									<pre>DECLARE @Id INT = NULL;  -- TODO: set test value
+    CREATE TABLE #Temp (Id INT);
+    INSERT INTO #Temp (Id) VALUES (@Id);
+    -- [DBG-PREVIEW] Would have executed:
+    SELECT N'INSERT to table dbo.Items' AS [DBG_Action],
+           @Id AS [@Id];</pre>
+								</div>
+							</div>
+						</article>
+
+						<article class="example-card" id="example-ifelse">
+							<div class="example-card__head">
+								<h3 class="example-card__title">Bare IF / ELSE + variable traces</h3>
+								<p class="example-card__desc">
+									When a branch is a single <code class="inline">SET</code> without
+									<code class="inline">BEGIN</code>…<code class="inline">END</code>, the harness
+									wraps the assignment and its default
+									<code class="inline">SELECT</code> trace so the branch stays valid.
+								</p>
+							</div>
+							<div class="example-pair">
+								<div class="example-pane example-pane--input">
+									<p class="example-pane__label">Input</p>
+									<pre>IF @Var1 &gt;= 0
+  SET @Var2 = 1
+ELSE
+  SET @Var2 = 0</pre>
+								</div>
+								<div class="example-pane example-pane--output">
+									<p class="example-pane__label">Harness</p>
+									<pre>IF @Var1 &gt;= 0
+  BEGIN
+      SET @Var2 = 1
+      SELECT 'DBG' [NOTES], @Var2 [Var2];
+  END
+ELSE
+  BEGIN
+      SET @Var2 = 0
+      SELECT 'DBG' [NOTES], @Var2 [Var2];
+  END</pre>
+								</div>
+							</div>
+						</article>
+
+						<article class="example-card" id="example-traces">
+							<div class="example-card__head">
+								<h3 class="example-card__title">Trace styles</h3>
+								<p class="example-card__desc">
+									Controlled by <code class="inline">spDebug.traceStyle</code>.
+									Default is <code class="inline">select</code>;
+									<code class="inline">printCombined</code> folds multi-variable assignments
+									into one <code class="inline">PRINT</code>.
+								</p>
+							</div>
+							<div class="example-pair">
+								<div class="example-pane example-pane--input">
+									<p class="example-pane__label">select (default)</p>
+									<pre>SET @A = 1;
+SELECT 'DBG' [NOTES], @A [A];
+
+SELECT @B = 2, @C = 3;
+SELECT 'DBG' [NOTES], @B [B], @C [C];</pre>
+								</div>
+								<div class="example-pane example-pane--output">
+									<p class="example-pane__label">printCombined</p>
+									<pre>SET @A = 1;
+PRINT CONCAT(N'[DBG] @A = ', CAST(@A AS NVARCHAR(4000)));
+
+SELECT @B = 2, @C = 3;
+PRINT CONCAT(
+  N'[DBG] @B = ', CAST(@B AS NVARCHAR(4000)),
+  N'; @C = ', CAST(@C AS NVARCHAR(4000))
+);</pre>
+								</div>
+							</div>
+						</article>
+					</div>
 
 					<h2 id="the-problem">Problem Statement</h2>
 					<p>
@@ -332,10 +494,11 @@
 							<div>
 								<p class="pipeline-step-title">Detect</p>
 								<p>
-									Every <code class="inline">INSERT</code>,
+									Durable-table <code class="inline">INSERT</code>,
 									<code class="inline">UPDATE</code>,
-									<code class="inline">DELETE</code>, and TCL statement is identified, along with
-									constructs the tool can't safely handle.
+									<code class="inline">DELETE</code>, and TCL statements are identified, along with
+									constructs the tool can't safely handle. Temp tables and table variables are
+									noted but left live.
 								</p>
 							</div>
 						</div>
@@ -344,9 +507,10 @@
 							<div>
 								<p class="pipeline-step-title">Rewrite</p>
 								<p>
-									DML becomes equivalent <code class="inline">SELECT</code> previews. TCL is
-									neutralized so nothing can commit. Named <code class="inline">EXEC</code>
-									calls become <code class="inline">PRINT</code> stubs.
+									Durable-table DML becomes equivalent <code class="inline">SELECT</code>
+									previews. TCL is neutralized so nothing can commit. Named
+									<code class="inline">EXEC</code> calls become
+									<code class="inline">PRINT</code> stubs.
 								</p>
 							</div>
 						</div>
@@ -355,8 +519,12 @@
 							<div>
 								<p class="pipeline-step-title">Trace</p>
 								<p>
-									Declared variables get <code class="inline">PRINT</code> /
-									<code class="inline">RAISERROR</code> traces at meaningful points.
+									Declared variables get traces (<code class="inline">SELECT</code> by default,
+									or <code class="inline">PRINT</code> /
+									<code class="inline">RAISERROR</code>). Bare
+									<code class="inline">IF</code> /
+									<code class="inline">ELSE</code> bodies are wrapped in
+									<code class="inline">BEGIN</code>…<code class="inline">END</code> when needed.
 								</p>
 							</div>
 						</div>

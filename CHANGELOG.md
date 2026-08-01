@@ -2,6 +2,17 @@
 
 All notable changes to SQL Debug Harness are documented here.
 
+## 0.0.4 — 2026-08-01
+
+### Changed
+
+- `INSERT` / `UPDATE` / `DELETE` against temporary tables (`#temp`, `##temp`) are left live in the harness (same as table-variable DML), since they do not write to durable user tables.
+- When a `SET` or `SELECT @var = …` sits under a bare `IF` / `ELSE` / `WHILE` (no `BEGIN`/`END`), the assignment and its variable trace are wrapped in `BEGIN`…`END` so the branch stays valid.
+
+### Fixed
+
+- Variable traces after bare `IF`/`ELSE` single-statement bodies no longer break `IF`/`ELSE` pairing or run outside the intended branch.
+
 ## 0.0.3 — 2026-07-27
 
 ### Added

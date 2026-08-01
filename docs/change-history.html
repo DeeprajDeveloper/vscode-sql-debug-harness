@@ -49,7 +49,7 @@
 					<span class="brand-name">sql-debug-harness</span>
 				</a>
 				<p class="brand-sub" id="package-version">
-					<span class="sidebar-version__value">v0.0.3</span>
+					<span class="sidebar-version__value">v0.0.4</span>
 				</p>
 
 				<div class="toc-group">
@@ -86,8 +86,12 @@
 				<nav aria-label="Release history">
 					<div class="toc-group">
 						<p class="toc-label">Change history</p>
+						<a class="navlink" href="#v0-0-4" data-target="v0-0-4">
+							<svg class="navlink__icon navlink__icon--fill" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 4c1.1046 0 2 0.89543 2 2v12c0 1.1046 -0.8954 2 -2 2H4c-1.10457 0 -2 -0.8954 -2 -2V6c0 -1.10457 0.89543 -2 2 -2zM8.18457 9.41211c-0.38563 0 -0.69824 0.31261 -0.69824 0.69829v2.1181L6.13086 9.84668c-0.15265 -0.26844 -0.43729 -0.43454 -0.74609 -0.43457 -0.47417 0 -0.85818 0.38428 -0.8584 0.85839v3.6172c0 0.3864 0.31278 0.7002 0.69922 0.7002 0.38627 0 0.69993 -0.313 0.70019 -0.6992v-2.1192l1.35547 2.3858c0.15224 0.2676 0.43724 0.4326 0.74512 0.4326 0.47276 -0.0002 0.85644 -0.3836 0.85644 -0.8565v-3.621c0 -0.38551 -0.31284 -0.69803 -0.69824 -0.69829m2.39553 0c-0.5521 0.00026 -0.99905 0.44788 -0.99905 0.99999v3.1758c0 0.5523 0.44775 1 1.00005 1h2.0634c0.3097 0 0.5613 -0.2509 0.5616 -0.5606 0 -0.3098 -0.2517 -0.5615 -0.5616 -0.5615h-1.6631v-0.9863h1.336c0.3015 0 0.5469 -0.2444 0.5469 -0.5459 0 -0.3013 -0.2447 -0.5456 -0.5459 -0.5459h-1.337v-0.8496h1.6719c0.3108 0 0.5632 -0.2518 0.5635 -0.56251 0 -0.31093 -0.2525 -0.56348 -0.5635 -0.56348zm8.0625 0c-0.3254 0 -0.6045 0.23273 -0.6631 0.55273l-0.3965 2.16606 -0.4785 -2.14457c-0.0749 -0.33554 -0.373 -0.57422 -0.7168 -0.57422 -0.3447 0.00004 -0.6429 0.24042 -0.7168 0.57715l-0.4668 2.12984 -0.3955 -2.15328c-0.0589 -0.32061 -0.3391 -0.55371 -0.665 -0.55371 -0.4293 0.00019 -0.7492 0.3955 -0.6602 0.81539l0.7783 3.667c0.0858 0.4042 0.4424 0.6933 0.8555 0.6934 0.4076 0 0.7611 -0.2815 0.8525 -0.6787l0.419 -1.8174 0.4267 1.8213c0.0928 0.3952 0.4457 0.6747 0.8516 0.6748 0.413 0 0.7697 -0.2894 0.8555 -0.6934l0.7793 -3.6689c0.0886 -0.41889 -0.2311 -0.81326 -0.6592 -0.81349"/></svg>
+							0.0.4
+						</a>
 						<a class="navlink" href="#v0-0-3" data-target="v0-0-3">
-							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>
+							<svg class="navlink__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
 							0.0.3
 						</a>
 						<a class="navlink" href="#v0-0-2" data-target="v0-0-2">
@@ -171,16 +175,52 @@
 						A release-by-release record of features, fixes, and behavior changes in SQL Debug Harness.
 					</p>
 
-					<section id="v0-0-3">
-						<h2>0.0.3 <span class="muted">— 2026-07-27</span></h2>
+					<section id="v0-0-4">
+						<h2>0.0.4 <span class="muted">— 2026-08-01</span></h2>
 						<div class="callout callout-safe">
 							<p class="callout-title">Current release</p>
 							<p>
-								This release hardens procedure-header conversion, expands variable-trace styles
-								(with <code class="inline">SELECT</code> as the default), and simplifies the
-								Workbench Save / Clear toolbar.
+								This release keeps temporary-table DML live in the harness and wraps bare
+								<code class="inline">IF</code> / <code class="inline">ELSE</code> assignments
+								so variable traces stay inside the intended branch.
 							</p>
 						</div>
+
+						<h3>Changed</h3>
+						<ul>
+							<li>
+								<code class="inline">INSERT</code> /
+								<code class="inline">UPDATE</code> /
+								<code class="inline">DELETE</code> against
+								<code class="inline">#temp</code> /
+								<code class="inline">##temp</code> tables are left intact
+								(same treatment as table-variable DML).
+							</li>
+							<li>
+								Bare <code class="inline">IF</code> /
+								<code class="inline">ELSE</code> /
+								<code class="inline">WHILE</code> bodies that assign with
+								<code class="inline">SET</code> or
+								<code class="inline">SELECT @var = …</code> are wrapped in
+								<code class="inline">BEGIN</code>…<code class="inline">END</code>
+								together with the injected variable trace.
+							</li>
+						</ul>
+
+						<h3>Fixed</h3>
+						<ul>
+							<li>
+								Traces after single-statement <code class="inline">IF</code> /
+								<code class="inline">ELSE</code> branches no longer break branch pairing
+								or execute outside the intended path.
+							</li>
+						</ul>
+					</section>
+
+					<hr class="section-divider" />
+
+					<section id="v0-0-3">
+						<h2>0.0.3 <span class="muted">— 2026-07-27</span></h2>
 
 						<h3>Added</h3>
 						<ul>

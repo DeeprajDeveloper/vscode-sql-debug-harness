@@ -62,12 +62,59 @@ describe("TRY/CATCH and temp objects", () => {
     expect(result.sql).toContain("BEGIN TRY");
   });
 
-  test("temp tables rewritten; table-variable DML left alone", () => {
+  test("temp tables and table-variable DML are left alone", () => {
     const result = generate(readFixture("temp_table_var.sql"));
-    expect(result.sql).toContain("#Temp");
-    // table variable INSERT INTO @TV should not be stubbed as preview for real tables
     expect(result.sql).toMatch(/INSERT\s+INTO\s+@TV/i);
-    expect(result.sql).toContain("[DBG-PREVIEW]");
+    expect(result.sql).toMatch(/INSERT\s+INTO\s+#Temp/i);
+    expect(result.sql).toMatch(/UPDATE\s+#Temp/i);
+    expect(result.sql).not.toMatch(/INSERT to table #Temp/i);
+    expect(result.sql).not.toMatch(/\[DBG-PREVIEW\].*#Temp/i);
+  });
+});
+
+describe("bare IF/ELSE trace wrapping", () => {
+  test("SET in IF/ELSE without BEGIN/END is wrapped with the SELECT trace", () => {
+    const sql = `
+CREATE PROCEDURE dbo.usp_IfElse
+    @Var1 INT
+AS
+BEGIN
+    DECLARE @Var2 INT;
+    IF @Var1 >= 0
+      SET @Var2 = 1
+    ELSE
+      SET @Var2 = 0
+END
+`.trim();
+    const result = generate(sql, { traceStyle: "select" });
+    expect(result.sql).toMatch(
+      /IF @Var1 >= 0\s+BEGIN\s+SET @Var2 = 1\s+SELECT 'DBG' \[NOTES\], @Var2 \[Var2\];\s+END/is
+    );
+    expect(result.sql).toMatch(
+      /ELSE\s+BEGIN\s+SET @Var2 = 0\s+SELECT 'DBG' \[NOTES\], @Var2 \[Var2\];\s+END/is
+    );
+  });
+
+  test("SET already inside BEGIN/END is not double-wrapped", () => {
+    const sql = `
+CREATE PROCEDURE dbo.usp_IfBegin
+    @Var1 INT
+AS
+BEGIN
+    DECLARE @Var2 INT;
+    IF @Var1 >= 0
+    BEGIN
+        SET @Var2 = 1;
+    END
+END
+`.trim();
+    const result = generate(sql, { traceStyle: "select" });
+    expect(result.sql).toMatch(
+      /BEGIN\s+SET @Var2 = 1;\s+SELECT 'DBG' \[NOTES\], @Var2 \[Var2\];\s+END/is
+    );
+    // Only the original IF body BEGIN — not an extra wrap around SET.
+    const beginCount = (result.sql.match(/^\s*BEGIN\s*$/gim) || []).length;
+    expect(beginCount).toBeLessThanOrEqual(2);
   });
 });
 

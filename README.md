@@ -4,7 +4,7 @@
 
 **Documentation:** [deeprajdeveloper.github.io/vscode-sql-debug-harness](https://deeprajdeveloper.github.io/vscode-sql-debug-harness/) · [Technical design](docs/TECHNICAL_DESIGN.md) · [Change history](docs/change-history.html)
 
-Statically rewrite a T-SQL stored procedure into a **safe debug script**: DML becomes `SELECT` previews, transactions are neutralized, and variables are traced with `PRINT` / `RAISERROR` — so you can run the script without mutating real tables.
+Statically rewrite a T-SQL stored procedure into a **safe debug script**: durable-table DML becomes `SELECT` previews (temp tables and table variables stay live), transactions are neutralized, and variables are traced — so you can run the script without mutating real tables.
 
 > **Not a live debugger.** This generates a static harness script — no breakpoints or step-into on SQL Server.
 
@@ -28,6 +28,12 @@ SQL Debug Harness statically rewrites a T-SQL stored procedure so side-effecting
 
 ## Before / after
 
+Interactive scenarios (durable DML, temp tables, bare IF/ELSE, trace styles) live on the
+[user documentation](https://deeprajdeveloper.github.io/vscode-sql-debug-harness/#examples) site.
+A few representative excerpts:
+
+### Durable-table DML
+
 **Input**
 
 ```sql
@@ -38,28 +44,51 @@ AS
 BEGIN
     INSERT INTO dbo.Items (Id, Name) VALUES (@Id, @Name);
     UPDATE dbo.Items SET Name = @Name WHERE Id = @Id;
-    DELETE FROM dbo.Items WHERE Id = @Id;
 END
 ```
 
-**Generated debug script** (excerpt)
+**Generated harness** (excerpt)
 
 ```sql
 -- [DBG] Harness: was CREATE PROCEDURE dbo.usp_SimpleDml; set parameter values below.
 DECLARE @Id INT = NULL,  -- TODO: set test value
         @Name NVARCHAR(100) = NULL;  -- TODO: set test value
-BEGIN
     -- [DBG-PREVIEW] Would have executed:
     SELECT N'INSERT to table dbo.Items' AS [DBG_Action], @Id AS [@Id], @Name AS [@Name];
     -- [DBG-PREVIEW] Would have executed:
     SELECT N'UPDATE to table dbo.Items' AS [DBG_Action], @Name AS [@Name]
     FROM dbo.Items
     WHERE Id = @Id;
-    -- [DBG-PREVIEW] Would have executed:
-    SELECT N'DELETE from table dbo.Items' AS [DBG_Action], *
-    FROM dbo.Items
-    WHERE Id = @Id;
-END
+```
+
+### Temp tables stay live
+
+```sql
+-- Input keeps both; harness only previews dbo.Items
+INSERT INTO #Temp (Id) VALUES (@Id);      -- left live
+INSERT INTO dbo.Items (Id) VALUES (@Id);  -- → SELECT preview
+```
+
+### Bare IF / ELSE wrapping
+
+```sql
+-- Input
+IF @Var1 >= 0
+  SET @Var2 = 1
+ELSE
+  SET @Var2 = 0
+
+-- Harness (default select traces)
+IF @Var1 >= 0
+  BEGIN
+      SET @Var2 = 1
+      SELECT 'DBG' [NOTES], @Var2 [Var2];
+  END
+ELSE
+  BEGIN
+      SET @Var2 = 0
+      SELECT 'DBG' [NOTES], @Var2 [Var2];
+  END
 ```
 
 ---
@@ -69,17 +98,16 @@ END
 1. Install **SQL Debug Harness** from the VS Code Marketplace (or `code --install-extension dist/sql-debug-harness.vsix`).
 2. Open [`samples/fixtures/simple_dml.sql`](samples/fixtures/simple_dml.sql) (or any `.sql` stored procedure).
 3. Right-click → **SQL Debug Harness** → **Generate Debug Script**.
-4. Review the harness in the **Workbench** — DML is preview-only; set `DECLARE` values and run against a safe connection.
+4. Review the harness in the **Workbench** — durable-table DML is preview-only; set `DECLARE` values and run against a safe connection.
 
 Optional: **Analyze Procedure** shows Summary / Warnings / Identified in the Workbench tab.
 
 ---
 
-## What’s new in 0.0.3
+## What’s new in 0.0.4
 
-- Variable traces default to `SELECT 'DBG' [NOTES], @var [var], …`; choose `print`, `printCombined`, or `raiserror` via `spDebug.traceStyle`.
-- Procedure headers with an inline first-line parameter keep the full multi-line list in one `DECLARE`; `AS BEGIN` / outer `END` are stripped.
-- Workbench **Save** is a single popover (analysis, debug script, log, open debug); **Clear** wipes generated output without regenerating.
+- Temporary-table DML (`#temp` / `##temp`) stays live in the harness, same as table-variable DML — only durable-table writes are previewed.
+- Bare `IF` / `ELSE` / `WHILE` assignments wrap in `BEGIN`…`END` with the variable trace so branches stay valid.
 
 See the full [change history](docs/change-history.html).
 
@@ -127,10 +155,11 @@ Available from the **SQL Debug Harness** right-click submenu on `.sql` files and
 
 ## Limitations (trust boundary)
 
-This tool prioritizes **correctness over coverage**. If something cannot be rewritten safely, it is flagged — not silently left as live DML.
+This tool prioritizes **correctness over coverage**. If something cannot be rewritten safely, it is flagged — not silently left as live durable-table DML.
 
 - **T-SQL only** for v1 (no PostgreSQL / Oracle / MySQL dialects yet).
 - **Static rewrite only** — not a live/step-through debugger.
+- **Temp tables / table variables** — DML against `#temp`, `##temp`, and `@tableVar` is intentionally left live (session-scoped only).
 - **Dynamic SQL** (`EXEC(@sql)`, `sp_executesql`) is detected and warned; not rewritten.
 - **Cursors / `WHILE`** — detected and warned; rewriting inside them is best-effort.
 - **`MERGE` / `OUTPUT`** — flagged; MERGE is disabled rather than incorrectly previewed.

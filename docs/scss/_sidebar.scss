@@ -149,6 +149,10 @@
   flex-shrink: 0;
   color: $text-faint;
   transition: color $transition-fast;
+
+  &--fill {
+    fill: currentColor;
+  }
 }
 
 .theme-icon {

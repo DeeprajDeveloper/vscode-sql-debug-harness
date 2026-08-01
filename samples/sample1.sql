@@ -55,10 +55,7 @@ end
 if isnull(@fiend, '') <> '' and isnull(@fld2, '') not in ('A','B')
 begin
 	if exists(select 'true' from table1 a inner join table2 b on a.id = b.id where a.fld1 = @fld1)
-	begin
-		raiserror('jshdcbjsdhc') with seterror
-		return @@error
-	end
+		Select @Var1 = 1
 end
 
 

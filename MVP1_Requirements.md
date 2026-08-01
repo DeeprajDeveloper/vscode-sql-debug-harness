@@ -1,7 +1,7 @@
 # SQL Debug Harness — MVP 1 Requirements Document
 
 **Repo:** `vscode-sql-debug-harness` (extension)
-**Status:** **Originally shipped as `0.0.1-beta.1`; current release `0.0.3`.** The TypeScript engine runs in-process inside the extension (and optional `npx` CLI). Python/PyPI backend path is retired. This document remains the MVP1 scope of record.
+**Status:** **Originally shipped as `0.0.1-beta.1`; current release `0.0.4`.** The TypeScript engine runs in-process inside the extension (and optional `npx` CLI). Python/PyPI backend path is retired. This document remains the MVP1 scope of record.
 
 ---
 
@@ -110,7 +110,7 @@ Regression suite status against `samples/fixtures/` + Jest (`src/engine/__tests_
 - [x] Statement using `OUTPUT` clause (warned)
 - [x] Nested transactions / mid-script `COMMIT`/`ROLLBACK` (TCL neutralized)
 - [x] `TRY...CATCH` blocks wrapping DML
-- [x] Temp tables and table variables (temp previewed; table-var DML left alone)
+- [x] Temp tables and table variables (both left alone — no durable-table side effects)
 - [x] CTEs and `MERGE` statements (`MERGE` flagged + disabled)
 - [x] Dynamic SQL present → flagged, not silently mishandled
 - [x] Cursor present → flagged

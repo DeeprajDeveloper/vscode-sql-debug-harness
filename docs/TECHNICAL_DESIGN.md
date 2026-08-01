@@ -5,10 +5,10 @@
 | **Project** | vscode-sql-debug-harness |
 | **Extension ID** | `DeeprajAdhikary.sql-debug-harness` |
 | **Package / CLI** | `sql-debug-harness` |
-| **Version** | 0.0.3 |
+| **Version** | 0.0.4 |
 | **Engine** | In-process TypeScript (`src/engine/`) |
 | **License** | MIT |
-| **Last updated** | 2026-07-27 |
+| **Last updated** | 2026-08-01 |
 
 ---
 
@@ -23,10 +23,10 @@ Developers who edit T-SQL stored procedures need a safe way to **analyze** proce
 SQL Debug Harness ships as a **standalone VS Code extension** with an in-process TypeScript engine. It:
 
 - Parses / scans T-SQL stored procedures (hybrid AST + text scan)
-- Rewrites `INSERT` / `UPDATE` / `DELETE` into `SELECT` previews
+- Rewrites durable-table `INSERT` / `UPDATE` / `DELETE` into `SELECT` previews (temp tables and table variables stay live)
 - Neutralizes TCL (`BEGIN TRAN` / `COMMIT` / `ROLLBACK` / `SAVE TRAN`)
 - Stubs `EXEC` calls with `PRINT` diagnostics
-- Injects variable traces (`SELECT` by default; also `PRINT`, combined `PRINT`, or `RAISERROR`)
+- Injects variable traces (`SELECT` by default; also `PRINT`, combined `PRINT`, or `RAISERROR`), wrapping bare `IF` / `ELSE` / `WHILE` bodies in `BEGIN`…`END` when needed
 - Converts parenthesized / multi-line procedure headers to one valid `DECLARE` (including `OUTPUT` / `OUT`), and strips procedure `AS BEGIN` / outer `END`
 - Surfaces unsupported constructs (dynamic SQL, cursors, `WHILE`, `MERGE`, `OUTPUT`) as loud warnings
 
@@ -149,7 +149,7 @@ Shares the same `src/engine/` module as the extension. Exit code **2** from `gen
 
 ## 6. Testing
 
-Regression fixtures under `samples/fixtures/` cover MVP1 cases: simple DML, `UPDATE…JOIN`, TCL, `TRY/CATCH`, temp tables / table variables, CTE/`MERGE`, dynamic SQL/cursors, pure `SELECT`, `OUTPUT`, malformed input, and the `my_proc` sample. Jest tests live in `src/engine/__tests__/`.
+Regression fixtures under `samples/fixtures/` cover MVP1 cases: simple DML, `UPDATE…JOIN`, TCL, `TRY/CATCH`, temp tables / table variables (left live), bare `IF`/`ELSE` trace wrapping, CTE/`MERGE`, dynamic SQL/cursors, pure `SELECT`, `OUTPUT`, malformed input, and the `my_proc` sample. Jest tests live in `src/engine/__tests__/`.
 
 ---
 

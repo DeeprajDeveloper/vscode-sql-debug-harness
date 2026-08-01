@@ -49,7 +49,7 @@
 					<span class="brand-name">sql-debug-harness</span>
 				</a>
 				<p class="brand-sub" id="package-version">
-					<span class="sidebar-version__value">v0.0.3</span>
+					<span class="sidebar-version__value">v0.0.4</span>
 				</p>
 
 				<div class="sidebar-page-links">
@@ -230,7 +230,7 @@
 							</tr>
 							<tr>
 								<td>Version</td>
-								<td><code class="inline">0.0.3</code></td>
+								<td><code class="inline">0.0.4</code></td>
 							</tr>
 							<tr>
 								<td>Engine</td>
@@ -294,10 +294,18 @@
 						</thead>
 						<tbody>
 							<tr>
-								<td class="tag-risk">INSERT / UPDATE / DELETE</td>
+								<td class="tag-risk">INSERT / UPDATE / DELETE (durable tables)</td>
 								<td>
 									Rewritten to an equivalent <code class="inline">SELECT</code> that previews
 									affected rows or values
+								</td>
+							</tr>
+							<tr>
+								<td class="tag-safe">Temp tables / table variables</td>
+								<td>
+									<code class="inline">#temp</code>,
+									<code class="inline">##temp</code>, and
+									<code class="inline">@tableVar</code> DML left live
 								</td>
 							</tr>
 							<tr>
@@ -311,8 +319,11 @@
 							<tr>
 								<td class="tag-safe">Declared variables</td>
 								<td>
+									<code class="inline">SELECT</code> /
 									<code class="inline">PRINT</code> /
-									<code class="inline">RAISERROR</code> traces at key points
+									<code class="inline">RAISERROR</code> traces; bare
+									<code class="inline">IF</code>/<code class="inline">ELSE</code> bodies wrapped
+									in <code class="inline">BEGIN</code>…<code class="inline">END</code>
 								</td>
 							</tr>
 							<tr>
